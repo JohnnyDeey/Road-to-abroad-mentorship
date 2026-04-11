@@ -707,7 +707,7 @@ window.doRegister = async () => {
     await setDoc(doc(db, "users", cred.user.uid), {
       email, name, role:'student', status:'pending', createdAt: serverTimestamp()
     });
-  } catch(e) { setErr('r-err', authErr(e.code)); btn('r-btn', false, 'Request Access'); }
+  } catch(e) { setErr('r-err', authErr(e.code)); btn('r-btn', false, 'Sign Up'); }
 };
 
 window.doForgot = async () => {
