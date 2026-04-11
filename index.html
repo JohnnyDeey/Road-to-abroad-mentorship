@@ -98,40 +98,48 @@
   // ============================================================
   // STATE
   // ============================================================
-  let currentUser = null;
-  let isMentor    = false;
-  let studentUID  = null;   // resolved after mentor loads
+  let currentUser   = null;
+  let isMentor      = false;
+  let studentUID    = null;
   let unsubProgress = null;
+  let unsubPending  = null;
 
   // ============================================================
-  // AUTH
+  // AUTH STATE — decides which screen to show
   // ============================================================
   onAuthStateChanged(auth, async (user) => {
     hideSetup();
     if (!user) { showScreen('login'); return; }
     currentUser = user;
     isMentor = (user.email.toLowerCase() === MENTOR_EMAIL.toLowerCase());
-    await ensureUserDoc(user);
+
     if (isMentor) {
       await loadMentorView();
-    } else {
-      loadStudentView();
-      listenStudentProgress(user.uid);
+      return;
     }
-  });
 
-  async function ensureUserDoc(user) {
-    const ref = doc(db, "users", user.uid);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      await setDoc(ref, {
-        email: user.email,
-        name: isMentor ? "John" : "Daniel",
-        role: isMentor ? "mentor" : "student",
-        createdAt: serverTimestamp()
+    // Not mentor — check approval status
+    const approvedRef = doc(db, "users", user.uid);
+    const approvedSnap = await getDoc(approvedRef);
+
+    if (approvedSnap.exists() && approvedSnap.data().status === 'approved') {
+      // Fully approved student
+      loadStudentView(approvedSnap.data().name || user.email);
+      listenStudentProgress(user.uid);
+    } else {
+      // Pending approval — show waiting screen
+      showScreen('pending');
+      document.getElementById('pending-email').textContent = user.email;
+      // Listen for approval in real time
+      unsubProgress = onSnapshot(approvedRef, snap => {
+        if (snap.exists() && snap.data().status === 'approved') {
+          if (unsubProgress) { unsubProgress(); unsubProgress = null; }
+          loadStudentView(snap.data().name || user.email);
+          listenStudentProgress(user.uid);
+        }
       });
     }
-  }
+  });
 
   // ============================================================
   // LOGIN
@@ -141,28 +149,82 @@
     const pass  = document.getElementById('login-pass').value;
     const errEl = document.getElementById('login-err');
     errEl.textContent = '';
-    document.getElementById('login-btn').disabled = true;
-    document.getElementById('login-btn').textContent = 'Signing in…';
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true; btn.textContent = 'Signing in…';
     try {
       await signInWithEmailAndPassword(auth, email, pass);
     } catch(e) {
       errEl.textContent = friendlyAuthError(e.code);
-      document.getElementById('login-btn').disabled = false;
-      document.getElementById('login-btn').textContent = 'Sign In';
+      btn.disabled = false; btn.textContent = 'Sign In';
+    }
+  };
+
+  // ============================================================
+  // REGISTER (self sign-up)
+  // ============================================================
+  window.doRegister = async function() {
+    const name  = document.getElementById('reg-name').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const pass  = document.getElementById('reg-pass').value;
+    const errEl = document.getElementById('reg-err');
+    errEl.textContent = '';
+    if (!name) { errEl.textContent = 'Please enter your full name.'; return; }
+    if (pass.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+    const btn = document.getElementById('reg-btn');
+    btn.disabled = true; btn.textContent = 'Creating account…';
+    try {
+      const { createUserWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      // Save to Firestore as pending
+      await setDoc(doc(db, "users", cred.user.uid), {
+        email, name, role: 'student',
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+      // onAuthStateChanged will fire and show the pending screen
+    } catch(e) {
+      errEl.textContent = friendlyAuthError(e.code);
+      btn.disabled = false; btn.textContent = 'Request Access';
     }
   };
 
   window.doLogout = async function() {
     if (unsubProgress) { unsubProgress(); unsubProgress = null; }
+    if (unsubPending)  { unsubPending();  unsubPending  = null; }
     await signOut(auth);
     showScreen('login');
   };
 
   function friendlyAuthError(code) {
     if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') return 'Email or password is incorrect.';
-    if (code === 'auth/wrong-password') return 'Password is incorrect.';
-    if (code === 'auth/invalid-email')  return 'Please enter a valid email.';
-    return 'Sign-in failed. Please check your details.';
+    if (code === 'auth/wrong-password')    return 'Password is incorrect.';
+    if (code === 'auth/invalid-email')     return 'Please enter a valid email address.';
+    if (code === 'auth/email-already-in-use') return 'This email is already registered. Try signing in instead.';
+    if (code === 'auth/weak-password')     return 'Password must be at least 6 characters.';
+    return 'Something went wrong. Please try again.';
+  }
+
+  // Toggle between login and register forms
+  window.showLoginForm = function() {
+    document.getElementById('login-form').style.display = 'block';
+    document.getElementById('register-form').style.display = 'none';
+    document.getElementById('toggle-login').classList.add('active');
+    document.getElementById('toggle-reg').classList.remove('active');
+  };
+  window.showRegisterForm = function() {
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('register-form').style.display = 'block';
+    document.getElementById('toggle-login').classList.remove('active');
+    document.getElementById('toggle-reg').classList.add('active');
+  };
+
+  // ============================================================
+  // STUDENT VIEW
+  // ============================================================
+  function loadStudentView(studentName) {
+    showScreen('student');
+    document.getElementById('s-name').textContent = studentName || 'Student';
+    renderStudentTasks();
   }
 
   // ============================================================
@@ -275,22 +337,109 @@
   };
 
   // ============================================================
-  // MENTOR VIEW — John
+  // MENTOR VIEW — John (multi-student + approvals)
   // ============================================================
   async function loadMentorView() {
     showScreen('mentor');
-    // Find student UID
+    listenPendingApprovals();
+    // Load first approved student by default
     const usersSnap = await getDocs(collection(db, "users"));
+    let students = [];
     usersSnap.forEach(d => {
-      if (d.data().role === 'student') studentUID = d.id;
+      const data = d.data();
+      if (data.role === 'student' && data.status === 'approved') {
+        students.push({ uid: d.id, ...data });
+      }
     });
-    if (!studentUID) {
-      document.getElementById('mentor-content').innerHTML = '<div class="info-box"><strong>No student found yet.</strong> Daniel needs to log in at least once to appear here.</div>';
+    if (students.length === 0) {
+      document.getElementById('mentor-content').innerHTML = '<div class="info-box"><strong>No approved students yet.</strong> Once you approve a student above, their tasks will appear here.</div>';
+      renderStudentSelector([]);
       return;
     }
+    renderStudentSelector(students);
+    selectStudent(students[0].uid, students[0].name);
+  }
+
+  function renderStudentSelector(students) {
+    const container = document.getElementById('student-selector');
+    if (!container) return;
+    if (students.length === 0) {
+      container.innerHTML = '<div style="font-size:0.82rem;color:rgba(255,255,255,0.4);padding:8px 24px;">No approved students yet</div>';
+      return;
+    }
+    container.innerHTML = students.map(s => `
+      <div class="student-tab" id="stab-${s.uid}" onclick="selectStudent('${s.uid}','${s.name}')">
+        <span style="font-size:0.9rem;">👤</span> ${s.name}
+      </div>`).join('');
+  }
+
+  window.selectStudent = function(uid, name) {
+    studentUID = uid;
+    document.querySelectorAll('.student-tab').forEach(t => t.classList.remove('active'));
+    const tab = document.getElementById('stab-'+uid);
+    if (tab) tab.classList.add('active');
+    document.getElementById('m-student-name').textContent = name + "'s Progress";
     renderMentorDashboard();
     listenMentorProgress();
+  };
+
+  function listenPendingApprovals() {
+    const usersRef = collection(db, "users");
+    unsubPending = onSnapshot(usersRef, snap => {
+      const pending = [];
+      snap.forEach(d => {
+        if (d.data().role === 'student' && d.data().status === 'pending') {
+          pending.push({ uid: d.id, ...d.data() });
+        }
+      });
+      renderPendingApprovals(pending);
+    });
   }
+
+  function renderPendingApprovals(pending) {
+    const badge = document.getElementById('pending-badge');
+    const container = document.getElementById('pending-approvals');
+    if (badge) badge.textContent = pending.length > 0 ? pending.length : '';
+    if (badge) badge.style.display = pending.length > 0 ? 'inline-block' : 'none';
+    if (!container) return;
+    if (pending.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+    container.style.display = 'block';
+    container.innerHTML = `
+      <div class="approval-header">🔔 ${pending.length} student${pending.length>1?'s':''} waiting for your approval</div>
+      ${pending.map(p => `
+        <div class="approval-row">
+          <div class="approval-info">
+            <div class="approval-name">${p.name}</div>
+            <div class="approval-email">${p.email}</div>
+          </div>
+          <div class="approval-actions">
+            <button class="approve-btn" onclick="approveStudent('${p.uid}','${p.name}')">✓ Approve</button>
+            <button class="reject-btn"  onclick="rejectStudent('${p.uid}')">✕ Decline</button>
+          </div>
+        </div>`).join('')}`;
+  }
+
+  window.approveStudent = async function(uid, name) {
+    await setDoc(doc(db, "users", uid), { status: 'approved' }, { merge: true });
+    // Refresh student selector
+    const usersSnap = await getDocs(collection(db, "users"));
+    let students = [];
+    usersSnap.forEach(d => {
+      const data = d.data();
+      if (data.role === 'student' && data.status === 'approved') students.push({ uid: d.id, ...data });
+    });
+    renderStudentSelector(students);
+    if (!studentUID) selectStudent(uid, name);
+  };
+
+  window.rejectStudent = async function(uid) {
+    if (!confirm('Decline this student? They will be removed.')) return;
+    const { deleteUser } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+    await setDoc(doc(db, "users", uid), { status: 'rejected' }, { merge: true });
+  };
 
   function renderMentorDashboard() {
     const container = document.getElementById('mentor-content');
@@ -398,13 +547,14 @@
   // UI HELPERS
   // ============================================================
   function showScreen(name) {
-    ['setup-banner','login-screen','student-screen','mentor-screen'].forEach(id => {
+    ['setup-banner','login-screen','pending-screen','student-screen','mentor-screen'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
-    if (name === 'login')   { document.getElementById('login-screen').style.display = 'flex'; }
-    if (name === 'student') { document.getElementById('student-screen').style.display = 'block'; }
-    if (name === 'mentor')  { document.getElementById('mentor-screen').style.display = 'block'; }
+    if (name === 'login')   document.getElementById('login-screen').style.display   = 'flex';
+    if (name === 'pending') document.getElementById('pending-screen').style.display = 'flex';
+    if (name === 'student') document.getElementById('student-screen').style.display = 'block';
+    if (name === 'mentor')  document.getElementById('mentor-screen').style.display  = 'block';
   }
 
   function hideSetup() {
@@ -655,7 +805,38 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
 .m-comment-btn{padding:7px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;}
 .m-comment-btn:hover{background:var(--gold);color:var(--navy);}
 
-/* Scroll top */
+/* Login toggle */
+.login-toggle{display:flex;gap:4px;background:#f0ece4;border-radius:10px;padding:4px;margin-bottom:24px;}
+.toggle-btn{flex:1;padding:9px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;color:var(--muted);transition:all .2s;}
+.toggle-btn.active{background:#fff;color:var(--navy);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,0.1);}
+.reg-note{background:#fffbf0;border-left:3px solid var(--gold);padding:10px 14px;border-radius:0 8px 8px 0;font-size:0.82rem;color:#666;margin-bottom:18px;line-height:1.5;}
+
+/* Pending screen */
+#pending-screen{display:none;min-height:100vh;align-items:center;justify-content:center;background:var(--navy);background-image:radial-gradient(ellipse at 60% 40%,rgba(232,160,32,0.08) 0%,transparent 60%);}
+.pending-box{background:#fff;border-radius:20px;padding:50px 40px;max-width:420px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+.pending-icon{font-size:3rem;margin-bottom:16px;}
+.pending-box h2{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--navy);margin-bottom:12px;}
+.pending-box p{font-size:0.9rem;color:#555;line-height:1.6;}
+
+/* Approval cards */
+.approval-header{font-weight:600;font-size:0.9rem;color:var(--navy);margin-bottom:12px;padding:14px 20px;background:#fff8e1;border-radius:10px 10px 0 0;border:1px solid #f5dfa0;border-bottom:none;}
+.approval-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:#fff;border:1px solid #f5dfa0;border-top:none;margin-bottom:2px;}
+.approval-row:last-child{border-radius:0 0 10px 10px;margin-bottom:0;}
+.approval-name{font-weight:600;font-size:0.92rem;color:var(--navy);}
+.approval-email{font-size:0.78rem;color:var(--muted);}
+.approval-actions{display:flex;gap:8px;flex-shrink:0;}
+.approve-btn{padding:7px 16px;background:var(--green);color:#fff;border:none;border-radius:7px;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;transition:opacity .2s;}
+.approve-btn:hover{opacity:0.85;}
+.reject-btn{padding:7px 14px;background:#f8f8f8;color:#999;border:1px solid #ddd;border-radius:7px;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.reject-btn:hover{background:#fee;color:var(--red);border-color:#fcc;}
+
+/* Student selector tabs */
+.student-tab{padding:8px 18px;border-radius:99px;background:#f0ece4;font-size:0.85rem;cursor:pointer;font-weight:500;color:var(--navy);display:flex;align-items:center;gap:6px;transition:all .2s;}
+.student-tab:hover{background:var(--navy);color:#fff;}
+.student-tab.active{background:var(--navy);color:#fff;}
+
+/* Pending badge */
+#pending-badge{display:none;background:var(--red);color:#fff;border-radius:99px;font-size:0.65rem;padding:2px 6px;font-weight:700;margin-left:6px;vertical-align:middle;}
 #scroll-top{position:fixed;bottom:28px;right:28px;background:var(--navy);color:var(--gold);border:none;border-radius:50%;width:42px;height:42px;font-size:1.1rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:200;}
 #scroll-top.show{display:flex;}
 @media(max-width:800px){:root{--sidebar-w:0px;}#sidebar{transform:translateX(-100%);}#main{margin-left:0;}#hero,#content,.mentor-hero,.mentor-summary,.mentor-content{padding-left:20px;padding-right:20px;}#hero h1{font-size:2rem;}.mentor-summary{grid-template-columns:1fr 1fr;}.m-month-grid{grid-template-columns:repeat(3,1fr);}}
@@ -680,17 +861,51 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
   <div class="note">💡 This is the exact same setup you did for Glory Songs. It will take you about 10 minutes.</div>
 </div>
 
-<!-- ======== LOGIN ======== -->
+<!-- ======== LOGIN / REGISTER ======== -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo">Daniel's Path <span>Abroad</span></div>
-    <div class="login-sub">Coached by John · FUOYE CS → World</div>
-    <label class="form-label" for="login-email">Email Address</label>
-    <input class="form-input" id="login-email" type="email" placeholder="Enter your email"/>
-    <label class="form-label" for="login-pass">Password</label>
-    <input class="form-input" id="login-pass" type="password" placeholder="Enter your password"/>
-    <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
-    <div class="login-err" id="login-err"></div>
+    <div class="login-logo">Path <span>Abroad</span></div>
+    <div class="login-sub">Mentorship Platform · Coached by John</div>
+
+    <!-- Toggle buttons -->
+    <div class="login-toggle">
+      <button class="toggle-btn active" id="toggle-login" onclick="showLoginForm()">Sign In</button>
+      <button class="toggle-btn" id="toggle-reg" onclick="showRegisterForm()">Request Access</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="login-form">
+      <label class="form-label" for="login-email">Email Address</label>
+      <input class="form-input" id="login-email" type="email" placeholder="Enter your email"/>
+      <label class="form-label" for="login-pass">Password</label>
+      <input class="form-input" id="login-pass" type="password" placeholder="Enter your password"/>
+      <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+      <div class="login-err" id="login-err"></div>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="register-form" style="display:none;">
+      <div class="reg-note">Fill in your details. John will approve your account before you can access the guide.</div>
+      <label class="form-label" for="reg-name">Full Name</label>
+      <input class="form-input" id="reg-name" type="text" placeholder="e.g. Daniel Adeyemi"/>
+      <label class="form-label" for="reg-email">Email Address</label>
+      <input class="form-input" id="reg-email" type="email" placeholder="Your email address"/>
+      <label class="form-label" for="reg-pass">Choose a Password</label>
+      <input class="form-input" id="reg-pass" type="password" placeholder="At least 6 characters"/>
+      <button class="login-btn" id="reg-btn" onclick="doRegister()">Request Access</button>
+      <div class="login-err" id="reg-err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== PENDING APPROVAL SCREEN ======== -->
+<div id="pending-screen" style="display:none;">
+  <div class="pending-box">
+    <div class="pending-icon">⏳</div>
+    <h2>Waiting for Approval</h2>
+    <p>Your account (<strong id="pending-email"></strong>) has been created successfully.</p>
+    <p style="margin-top:10px;">John will review and approve your access shortly. This page will update automatically the moment he approves you — no need to refresh.</p>
+    <button class="login-btn" style="margin-top:28px;max-width:200px;" onclick="doLogout()">Sign Out</button>
   </div>
 </div>
 
@@ -942,7 +1157,7 @@ Federal University of Oye-Ekiti (FUOYE) | B.Sc. Computer Science
     </div>
     <nav>
       <div class="nav-section">Dashboard</div>
-      <a class="nav-item active" href="#m-top"><span class="nav-icon">📊</span> Overview</a>
+      <a class="nav-item active" href="#m-top"><span class="nav-icon">📊</span> Overview <span id="pending-badge"></span></a>
       <a class="nav-item" href="#mentor-content"><span class="nav-icon">✅</span> Task Details</a>
     </nav>
     <div class="sidebar-user">
@@ -956,11 +1171,18 @@ Federal University of Oye-Ekiti (FUOYE) | B.Sc. Computer Science
   <div id="main">
     <div class="mentor-hero" id="m-top">
       <div class="eyebrow">Mentor View · Live from Firebase</div>
-      <h1>Daniel's <em>Progress</em></h1>
+      <h1 id="m-student-name">Student <em>Progress</em></h1>
       <p>Real-time view of every task Daniel has completed. Leave feedback on any task below.</p>
     </div>
 
-    <!-- Summary Cards -->
+    <!-- Pending approvals banner -->
+    <div id="pending-approvals" style="display:none; margin:0 60px 0; padding-bottom:20px;"></div>
+
+    <!-- Student selector tabs -->
+    <div style="padding:0 60px 20px; background:#fff; border-bottom:1px solid var(--border);">
+      <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace;">Viewing Student</div>
+      <div id="student-selector" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
     <div class="mentor-summary">
       <div class="m-stat-card">
         <div class="m-stat-num" id="m-pct-big">0%</div>
