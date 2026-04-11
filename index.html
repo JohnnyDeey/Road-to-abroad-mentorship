@@ -59,7 +59,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
 .pending-box p{font-size:0.88rem;color:#555;line-height:1.7;}
 
 /* ── SIDEBAR ── */
-#sidebar{position:fixed;left:0;top:0;width:var(--sw);height:100vh;background:var(--navy);overflow-y:auto;z-index:300;display:flex;flex-direction:column;box-shadow:4px 0 20px rgba(0,0,0,0.2);transition:transform .3s;}
+#sidebar,#mentor-sidebar{position:fixed;left:0;top:0;width:var(--sw);height:100vh;background:var(--navy);overflow-y:auto;z-index:300;display:flex;flex-direction:column;box-shadow:4px 0 20px rgba(0,0,0,0.2);transition:transform .3s;}
 .sb-head{padding:22px 22px 18px;border-bottom:1px solid rgba(255,255,255,0.08);}
 .sb-logo-wrap{display:flex;align-items:center;gap:10px;}
 .sb-logo-icon{width:36px;height:36px;border-radius:10px;background:rgba(232,160,32,0.15);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
@@ -235,6 +235,8 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
   #mob-bar{display:flex;}
   #sidebar{transform:translateX(-270px);}
   #sidebar.open{transform:translateX(0);}
+  #mentor-sidebar{transform:translateX(-270px);}
+  #mentor-sidebar.open{transform:translateX(0);}
   #sb-overlay.show{display:block;}
   #app-main{margin-left:0 !important;}
   .hero{padding:70px 18px 28px;}
@@ -520,13 +522,7 @@ Federal University of Oye-Ekiti (FUOYE) | B.Sc. Computer Science
 
 <!-- ══════════════ MENTOR SCREEN ══════════════ -->
 <div id="mentor-screen" class="screen">
-  <nav id="sidebar">
-    <div class="sb-head">
-      <div class="sb-logo-wrap">
-        <div class="sb-logo-icon">✈</div>
-        <div>
-          <div class="sb-logo">Mentor <span>View</span></div>
-          <div class="sb-tagline">John · Monitoring All Students</div>
+  <nav id="mentor-sidebar">
         </div>
       </div>
     </div>
@@ -981,11 +977,19 @@ window.copyEmail = () => {
 };
 
 window.toggleSidebar = () => {
-  document.getElementById('sidebar').classList.toggle('open');
+  // Find whichever sidebar is currently active
+  const sb = document.getElementById('mentor-sidebar') &&
+    document.getElementById('mentor-screen').style.display !== 'none'
+    ? document.getElementById('mentor-sidebar')
+    : document.getElementById('sidebar');
+  if (sb) sb.classList.toggle('open');
   document.getElementById('sb-overlay').classList.toggle('show');
 };
 window.closeSidebar = () => {
-  document.getElementById('sidebar').classList.remove('open');
+  const sb1 = document.getElementById('sidebar');
+  const sb2 = document.getElementById('mentor-sidebar');
+  if (sb1) sb1.classList.remove('open');
+  if (sb2) sb2.classList.remove('open');
   document.getElementById('sb-overlay').classList.remove('show');
 };
 
