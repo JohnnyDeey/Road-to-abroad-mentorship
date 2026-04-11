@@ -263,7 +263,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
 </div>
 
 <!-- ══════════════ LOGIN ══════════════ -->
-<div id="login-screen" class="screen">
+<div id="login-screen" class="screen" style="display:none;">
   <div class="login-box">
     <div class="login-logo-wrap">
       <div class="login-logo-icon">✈</div>
@@ -272,7 +272,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
     <div class="login-sub">Mentorship Platform · Coached by John</div>
     <div class="login-toggle">
       <button class="toggle-btn active" id="tog-signin" onclick="showSignIn()">Sign In</button>
-      <button class="toggle-btn" id="tog-reg" onclick="showRegister()">Sign Up</button>
+      <button class="toggle-btn" id="tog-reg" onclick="showRegister()">Request Access</button>
     </div>
     <!-- Sign in -->
     <div id="signin-form">
@@ -286,21 +286,21 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
     </div>
     <!-- Register -->
     <div id="register-form" style="display:none;">
-      <div class="reg-note">Your account will be approved shortly.</div>
+      <div class="reg-note">John will approve your account before you can access the guide.</div>
       <label class="form-label">Full Name</label>
-      <input class="form-input" id="r-name" type="text" placeholder="e.g. John Chinaza Gambo"/>
+      <input class="form-input" id="r-name" type="text" placeholder="e.g. Daniel Adeyemi"/>
       <label class="form-label">Email Address</label>
-      <input class="form-input" id="r-email" type="email" placeholder="johnchinazagambo@example.com"/>
+      <input class="form-input" id="r-email" type="email" placeholder="Your email"/>
       <label class="form-label">Password</label>
       <input class="form-input" id="r-pass" type="password" placeholder="At least 6 characters"/>
-      <button class="login-btn" id="r-btn" onclick="doRegister()">Sign Up</button>
+      <button class="login-btn" id="r-btn" onclick="doRegister()">Request Access</button>
       <div class="form-err" id="r-err"></div>
     </div>
   </div>
 </div>
 
 <!-- ══════════════ PENDING ══════════════ -->
-<div id="pending-screen" class="screen">
+<div id="pending-screen" class="screen" style="display:none;">
   <div class="pending-box">
     <div class="pending-icon">⏳</div>
     <h2>Waiting for Approval</h2>
@@ -687,7 +687,6 @@ onAuthStateChanged(auth, async (user) => {
     });
   }
 });
-  
 
 // ── AUTH ACTIONS ─────────────────────────────────────────
 window.doSignIn = async () => {
@@ -708,7 +707,7 @@ window.doRegister = async () => {
     await setDoc(doc(db, "users", cred.user.uid), {
       email, name, role:'student', status:'pending', createdAt: serverTimestamp()
     });
-  } catch(e) { setErr('r-err', authErr(e.code)); btn('r-btn', false, 'Sign Up'); }
+  } catch(e) { setErr('r-err', authErr(e.code)); btn('r-btn', false, 'Request Access'); }
 };
 
 window.doForgot = async () => {
@@ -936,7 +935,16 @@ window.saveFeedback = async id => {
 };
 
 // ── UI HELPERS ───────────────────────────────────────────
-function show(id, disp='block') { const e=document.getElementById(id); if(e) e.style.display=disp; }
+function show(id, disp='block') {
+  const e = document.getElementById(id);
+  if (!e) return;
+  // These screens need flex to centre their content
+  if (id === 'login-screen' || id === 'pending-screen') {
+    e.style.display = 'flex';
+  } else {
+    e.style.display = disp;
+  }
+}
 function hide(id)               { const e=document.getElementById(id); if(e) e.style.display='none'; }
 function v(id)                  { return document.getElementById(id)?.value?.trim()||''; }
 function set(id,val)            { const e=document.getElementById(id); if(e) e.textContent=val; }
