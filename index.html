@@ -3,7 +3,54 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Daniel's Path Abroad — Coached by John</title>
+<title>Path Abroad — Mentorship</title>
+<meta name="description" content="Study abroad mentorship platform — guided by John"/>
+<meta name="theme-color" content="#0d1b2a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Path Abroad"/>
+
+<!-- PWA Manifest (inline via JS blob) -->
+<script>
+  const manifest = {
+    name: "Path Abroad — Mentorship",
+    short_name: "Path Abroad",
+    description: "Study abroad mentorship platform",
+    start_url: "./",
+    display: "standalone",
+    background_color: "#0d1b2a",
+    theme_color: "#0d1b2a",
+    icons: [
+      { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%230d1b2a'/%3E%3Ctext x='96' y='130' text-anchor='middle' font-size='110' font-family='serif'%3E✈%3C/text%3E%3C/svg%3E", sizes: "192x192", type: "image/svg+xml" },
+      { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%230d1b2a'/%3E%3Ctext x='256' y='360' text-anchor='middle' font-size='300' font-family='serif'%3E✈%3C/text%3E%3C/svg%3E", sizes: "512x512", type: "image/svg+xml" }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const link = document.createElement('link');
+  link.rel = 'manifest'; link.href = URL.createObjectURL(blob);
+  document.currentScript.after(link);
+</script>
+
+<!-- Favicon -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230d1b2a'/%3E%3Ctext x='32' y='46' text-anchor='middle' font-size='38' font-family='serif'%3E✈%3C/text%3E%3C/svg%3E"/>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='30' fill='%230d1b2a'/%3E%3Ctext x='90' y='125' text-anchor='middle' font-size='105' font-family='serif'%3E✈%3C/text%3E%3C/svg%3E"/>
+
+<!-- Service Worker registration -->
+<script>
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      const CACHE = 'path-abroad-v1';
+      const ASSETS = ['./', './index.html'];
+      self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))));
+      self.addEventListener('fetch', e => e.respondWith(
+        caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match('./index.html')))
+      ));
+    `;
+    const swBlob = new Blob([swCode], {type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+  }
+</script>
+
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 
 <!-- ============================================================
@@ -188,7 +235,20 @@
     }
   };
 
-  window.doLogout = async function() {
+  window.doResetPassword = async function() {
+    const email = document.getElementById('login-email').value.trim();
+    const errEl = document.getElementById('login-err');
+    if (!email) { errEl.style.color='#e8a020'; errEl.textContent = 'Enter your email above first, then click Forgot Password.'; return; }
+    try {
+      const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+      await sendPasswordResetEmail(auth, email);
+      errEl.style.color = '#27ae60';
+      errEl.textContent = '✓ Reset email sent to ' + email + '. Check your inbox.';
+    } catch(e) {
+      errEl.style.color = 'var(--red)';
+      errEl.textContent = 'Could not send reset email. Check the address is correct.';
+    }
+  };
     if (unsubProgress) { unsubProgress(); unsubProgress = null; }
     if (unsubPending)  { unsubPending();  unsubPending  = null; }
     await signOut(auth);
@@ -592,7 +652,21 @@
     });
   };
 
-  // Sidebar nav scroll highlight
+  // Mobile sidebar toggle
+  window.toggleMobileMenu = function() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('show');
+  };
+  window.closeMobileMenu = function() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('show');
+  };
+  // Close sidebar on nav link click (mobile)
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => {
+      if (window.innerWidth <= 800) closeMobileMenu();
+    });
+  });
   window.addEventListener('scroll', () => {
     const items = document.querySelectorAll('.nav-item');
     const sections = document.querySelectorAll('.section[id]');
@@ -621,7 +695,6 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
   padding:40px;text-align:center;min-height:100vh;
   align-items:center;justify-content:center;flex-direction:column;
 }
-#setup-banner{display:flex;}
 #setup-banner h2{font-family:'Playfair Display',serif;font-size:2rem;color:var(--gold);margin-bottom:16px;}
 #setup-banner ol{text-align:left;max-width:560px;line-height:2.4;font-size:0.95rem;color:rgba(255,255,255,0.85);}
 #setup-banner ol li{margin-bottom:4px;}
@@ -805,7 +878,59 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
 .m-comment-btn{padding:7px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;}
 .m-comment-btn:hover{background:var(--gold);color:var(--navy);}
 
-/* Login toggle */
+/* Logo */
+.login-logo-wrap{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px;}
+.login-logo-icon{width:44px;height:44px;border-radius:12px;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;}
+.login-logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:var(--navy);}
+.login-logo span{color:var(--gold);}
+.forgot-link{text-align:center;font-size:0.82rem;color:var(--gold);cursor:pointer;margin-top:10px;text-decoration:underline;}
+.forgot-link:hover{color:var(--navy);}
+
+/* Sidebar logo */
+.sidebar-logo-wrap{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.sidebar-logo-icon{width:36px;height:36px;border-radius:10px;background:rgba(232,160,32,0.15);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+
+/* ===== MOBILE / PWA ===== */
+@media(max-width:800px){
+  :root{--sidebar-w:0px;}
+  #sidebar{transform:translateX(-100%);transition:transform .3s;}
+  #sidebar.open{transform:translateX(0);}
+  #main{margin-left:0 !important;}
+  #hero{padding:28px 20px 24px;}
+  #hero h1{font-size:1.7rem;}
+  #content{padding:20px 16px 80px;}
+  .mentor-hero{padding:28px 20px 20px;}
+  .mentor-summary{grid-template-columns:1fr 1fr;padding:16px 20px;gap:10px;}
+  .mentor-content{padding:20px 16px 80px;}
+  .m-month-grid{grid-template-columns:repeat(3,1fr);}
+  #pending-approvals{margin:0 16px 0;}
+  div[style*="padding:20px 60px"]{padding:16px 20px 0 !important;}
+  div[style*="padding:28px 60px"]{padding:16px 20px !important;}
+  .hero-stats{gap:16px;}
+  .grid-2{grid-template-columns:1fr;}
+  .login-box{padding:32px 24px;border-radius:16px;}
+
+  /* Mobile top bar */
+  #mobile-bar{display:flex;}
+}
+#mobile-bar{
+  display:none;
+  position:fixed;top:0;left:0;right:0;height:56px;
+  background:var(--navy);z-index:200;
+  align-items:center;padding:0 16px;gap:12px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.2);
+}
+#mobile-bar .mob-logo{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:#fff;flex:1;}
+#mobile-bar .mob-logo span{color:var(--gold);}
+#mobile-menu-btn{background:none;border:none;color:#fff;font-size:1.4rem;cursor:pointer;padding:6px;}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99;}
+#sidebar-overlay.show{display:block;}
+@media(min-width:801px){#mobile-bar{display:none !important;}#main{margin-left:var(--sidebar-w);}}
+/* Push content down on mobile so it clears the top bar */
+@media(max-width:800px){
+  #hero,#student-screen > #main > #hero { padding-top: 72px !important; }
+  .mentor-hero { padding-top: 72px !important; }
+}
 .login-toggle{display:flex;gap:4px;background:#f0ece4;border-radius:10px;padding:4px;margin-bottom:24px;}
 .toggle-btn{flex:1;padding:9px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;color:var(--muted);transition:all .2s;}
 .toggle-btn.active{background:#fff;color:var(--navy);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,0.1);}
@@ -864,7 +989,11 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
 <!-- ======== LOGIN / REGISTER ======== -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo">Path <span>Abroad</span></div>
+    <!-- Logo -->
+    <div class="login-logo-wrap">
+      <div class="login-logo-icon">✈</div>
+      <div class="login-logo">Path <span>Abroad</span></div>
+    </div>
     <div class="login-sub">Mentorship Platform · Coached by John</div>
 
     <!-- Toggle buttons -->
@@ -880,6 +1009,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
       <label class="form-label" for="login-pass">Password</label>
       <input class="form-input" id="login-pass" type="password" placeholder="Enter your password"/>
       <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+      <div class="forgot-link" onclick="doResetPassword()">Forgot password? Send reset email</div>
       <div class="login-err" id="login-err"></div>
     </div>
 
@@ -909,14 +1039,26 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-h
   </div>
 </div>
 
+<!-- ======== MOBILE TOP BAR (shown on phones) ======== -->
+<div id="mobile-bar">
+  <button id="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+  <div class="mob-logo">Path <span>Abroad</span></div>
+</div>
+<div id="sidebar-overlay" onclick="closeMobileMenu()"></div>
+
 <!-- ======== STUDENT SCREEN (Daniel) ======== -->
 <div id="student-screen" style="display:none;">
 
   <!-- Sidebar -->
   <nav id="sidebar">
     <div id="sidebar-header">
-      <div class="logo">Daniel's Path <span>Abroad</span></div>
-      <div class="tagline">FUOYE CS → World · Coached by John</div>
+      <div class="sidebar-logo-wrap">
+        <div class="sidebar-logo-icon">✈</div>
+        <div>
+          <div class="logo">Path <span>Abroad</span></div>
+          <div class="tagline">FUOYE CS → World · Coached by John</div>
+        </div>
+      </div>
     </div>
     <div class="sidebar-progress">
       <label>Your Progress</label>
@@ -1146,8 +1288,13 @@ Federal University of Oye-Ekiti (FUOYE) | B.Sc. Computer Science
   <!-- Mentor Sidebar -->
   <nav id="sidebar" style="position:fixed;">
     <div id="sidebar-header">
-      <div class="logo">Mentor <span>Dashboard</span></div>
-      <div class="tagline">John · Monitoring Daniel's Progress</div>
+      <div class="sidebar-logo-wrap">
+        <div class="sidebar-logo-icon">✈</div>
+        <div>
+          <div class="logo">Mentor <span>Dashboard</span></div>
+          <div class="tagline">John · Monitoring Progress</div>
+        </div>
+      </div>
     </div>
     <div class="sidebar-progress">
       <label>Daniel's Progress</label>
