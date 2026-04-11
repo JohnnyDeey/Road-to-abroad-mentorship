@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Daniel's Path Abroad — Coached by John</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+<!-- ============================================================
+  🔧 SETUP INSTRUCTIONS FOR JOHN
+  ============================================================
+  1. Go to https://console.firebase.google.com
+  2. Create a new project (or use an existing one)
+  3. Click "Add App" → Web → register the app
+  4. Copy your firebaseConfig values below
+  5. Go to Authentication → Sign-in method → Enable "Email/Password"
+  6. Go to Authentication → Users → Add user (create John's account)
+     Then add Daniel's account — give Daniel his email + password
+  7. Go to Firestore Database → Create database (start in test mode for now)
+  8. Fill in MENTOR_EMAIL below with YOUR email (John's email)
+  9. Save and open this HTML file in any browser, or host on GitHub Pages / Vercel
+  ============================================================ -->
+
+<script type="module">
+  // ============================================================
+  // 🔧 STEP 1: PASTE YOUR FIREBASE CONFIG HERE
+  // ============================================================
+  const firebaseConfig = {
+    apiKey:            "PASTE_YOUR_apiKey_HERE",
+    authDomain:        "PASTE_YOUR_authDomain_HERE",
+    projectId:         "PASTE_YOUR_projectId_HERE",
+    storageBucket:     "PASTE_YOUR_storageBucket_HERE",
+    messagingSenderId: "PASTE_YOUR_messagingSenderId_HERE",
+    appId:             "PASTE_YOUR_appId_HERE"
+  };
+
+  // ============================================================
+  // 🔧 STEP 2: PUT YOUR EMAIL HERE (John's email = mentor view)
+  // ============================================================
+  const MENTOR_EMAIL = "john@example.com";
+
+  // ============================================================
+  // Firebase initialisation
+  // ============================================================
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot,
+    collection, query, getDocs, serverTimestamp, updateDoc }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const app   = initializeApp(firebaseConfig);
+  const auth  = getFirestore(app) && getAuth(app);
+  const db    = getFirestore(app);
+
+  // ============================================================
+  // ALL TASKS DEFINITION
+  // ============================================================
+  const TASKS = [
+    // Month 1
+    { id:"t1",  month:1, group:"Identity & Documents",   text:"Apply for international passport at NIS online portal",           notes:"passport.immigration.gov.ng — Allow 2–3 months" },
+    { id:"t2",  month:1, group:"Identity & Documents",   text:"Request unofficial transcripts from university registry",          notes:"Get 5 copies for multiple applications" },
+    { id:"t3",  month:1, group:"Academic Profile",       text:"Write 1-page Academic Profile (CGPA, projects, interests) and share with John", notes:"Google Doc is fine. First draft — don't overthink." },
+    { id:"t4",  month:1, group:"Academic Profile",       text:"Create your academic CV (education, GPA, projects, skills, awards)", notes:"" },
+    { id:"t5",  month:1, group:"Academic Profile",       text:"Set up Google Scholar profile (scholar.google.com)",               notes:"Add your name, university, any projects" },
+    { id:"t6",  month:1, group:"Research Universities",  text:"Use FindAMasters.com and MastersPortal.eu — shortlist 10 programmes", notes:"" },
+    { id:"t7",  month:1, group:"Research Universities",  text:"Create a University Tracker spreadsheet (Name, Country, Deadline, Funding, Status)", notes:"" },
+    { id:"t8",  month:1, group:"Research Universities",  text:"Define your specific research interest in 1–2 sentences",          notes:"e.g. 'adversarial robustness in AI for low-resource NLP'" },
+    // Month 2
+    { id:"t9",  month:2, group:"Professor Outreach",     text:"Find 20 professors on Google Scholar in your research area",      notes:"" },
+    { id:"t10", month:2, group:"Professor Outreach",     text:"Read at least 1 recent paper from each of your top 10 professors", notes:"Use Sci-Hub if you can't access them" },
+    { id:"t11", month:2, group:"Professor Outreach",     text:"Email first batch of 5 professors using the template in Module 4", notes:"" },
+    { id:"t12", month:2, group:"Professor Outreach",     text:"Create Professor Outreach Tracker spreadsheet",                   notes:"Name | Uni | Emailed | Reply | Notes" },
+    { id:"t13", month:2, group:"Professor Outreach",     text:"Email remaining 10 professors (second batch) — personalised",     notes:"" },
+    { id:"t14", month:2, group:"English Language Test",  text:"Register for IELTS or TOEFL",                                     notes:"Target: IELTS 6.5+ or TOEFL 90+" },
+    { id:"t15", month:2, group:"English Language Test",  text:"Begin IELTS/TOEFL preparation — 1 hour per day",                  notes:"Free: IELTS.org, Magoosh YouTube, Cambridge books" },
+    // Month 3
+    { id:"t16", month:3, group:"Key Documents",          text:"Request 3 official Letters of Recommendation from lecturers",     notes:"Give them your CV, class list, and SOP draft. 6 weeks notice." },
+    { id:"t17", month:3, group:"Key Documents",          text:"Obtain official transcripts from university (sealed)",            notes:"" },
+    { id:"t18", month:3, group:"Key Documents",          text:"Obtain certified copy of birth certificate",                      notes:"" },
+    { id:"t19", month:3, group:"Key Documents",          text:"Take IELTS or TOEFL exam",                                        notes:"" },
+    { id:"t20", month:3, group:"SOP Writing",            text:"Write first rough draft of SOP (500 words minimum)",              notes:"Use Module 7 structure" },
+    { id:"t21", month:3, group:"SOP Writing",            text:"Send SOP draft to John for review and feedback",                  notes:"" },
+    // Month 4
+    { id:"t22", month:4, group:"Scholarships",           text:"Apply for Mastercard Foundation Scholarship",                     notes:"mastercardfdn.org/all/scholars/" },
+    { id:"t23", month:4, group:"Scholarships",           text:"Apply for DAAD Scholarship (Germany) if targeting German unis",   notes:"daad.de/en/" },
+    { id:"t24", month:4, group:"Scholarships",           text:"Apply for at least 2 other scholarships from your tracker",       notes:"" },
+    { id:"t25", month:4, group:"SOP Final",              text:"Final polished SOP completed and reviewed by John",               notes:"" },
+    { id:"t26", month:4, group:"SOP Final",              text:"Confirm all 3 recommendation letters are ready/submitted",        notes:"" },
+    // Month 5–6
+    { id:"t27", month:5, group:"Applications",           text:"Submit university applications (5–8 universities)",               notes:"" },
+    { id:"t28", month:5, group:"Applications",           text:"Follow up with professors who expressed interest",                notes:"Tell them you've applied" },
+    { id:"t29", month:6, group:"Decisions & Visa",       text:"When offer received: review carefully, share with John first",    notes:"Never accept without reading the full funding terms" },
+    { id:"t30", month:6, group:"Decisions & Visa",       text:"Begin student visa application (after offer accepted)",           notes:"Allow 2–4 months for Canada study permit" },
+    { id:"t31", month:6, group:"Decisions & Visa",       text:"Apply for on-campus or off-campus housing",                      notes:"" },
+  ];
+
+  // ============================================================
+  // STATE
+  // ============================================================
+  let currentUser = null;
+  let isMentor    = false;
+  let studentUID  = null;   // resolved after mentor loads
+  let unsubProgress = null;
+
+  // ============================================================
+  // AUTH
+  // ============================================================
+  onAuthStateChanged(auth, async (user) => {
+    hideSetup();
+    if (!user) { showScreen('login'); return; }
+    currentUser = user;
+    isMentor = (user.email.toLowerCase() === MENTOR_EMAIL.toLowerCase());
+    await ensureUserDoc(user);
+    if (isMentor) {
+      await loadMentorView();
+    } else {
+      loadStudentView();
+      listenStudentProgress(user.uid);
+    }
+  });
+
+  async function ensureUserDoc(user) {
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        email: user.email,
+        name: isMentor ? "John" : "Daniel",
+        role: isMentor ? "mentor" : "student",
+        createdAt: serverTimestamp()
+      });
+    }
+  }
+
+  // ============================================================
+  // LOGIN
+  // ============================================================
+  window.doLogin = async function() {
+    const email = document.getElementById('login-email').value.trim();
+    const pass  = document.getElementById('login-pass').value;
+    const errEl = document.getElementById('login-err');
+    errEl.textContent = '';
+    document.getElementById('login-btn').disabled = true;
+    document.getElementById('login-btn').textContent = 'Signing in…';
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch(e) {
+      errEl.textContent = friendlyAuthError(e.code);
+      document.getElementById('login-btn').disabled = false;
+      document.getElementById('login-btn').textContent = 'Sign In';
+    }
+  };
+
+  window.doLogout = async function() {
+    if (unsubProgress) { unsubProgress(); unsubProgress = null; }
+    await signOut(auth);
+    showScreen('login');
+  };
+
+  function friendlyAuthError(code) {
+    if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') return 'Email or password is incorrect.';
+    if (code === 'auth/wrong-password') return 'Password is incorrect.';
+    if (code === 'auth/invalid-email')  return 'Please enter a valid email.';
+    return 'Sign-in failed. Please check your details.';
+  }
+
+  // ============================================================
+  // STUDENT VIEW — Daniel
+  // ============================================================
+  function loadStudentView() {
+    showScreen('student');
+    document.getElementById('s-name').textContent = 'Daniel';
+    renderStudentTasks();
+  }
+
+  function listenStudentProgress(uid) {
+    if (unsubProgress) unsubProgress();
+    const colRef = collection(db, "progress", uid, "tasks");
+    unsubProgress = onSnapshot(colRef, snap => {
+      const data = {};
+      snap.forEach(d => { data[d.id] = d.data(); });
+      applyProgressToStudentUI(data);
+      updateStudentProgressBar(data);
+    });
+  }
+
+  function renderStudentTasks() {
+    const container = document.getElementById('student-tasks');
+    let currentMonth = 0;
+    let html = '';
+    const monthLabels = {1:'Month 1 — Research & Profile', 2:'Month 2 — Outreach & Language',
+      3:'Month 3 — Documents', 4:'Month 4 — Scholarships & SOP', 5:'Month 5 — Apply', 6:'Month 6 — Visa'};
+    let currentGroup = '';
+    TASKS.forEach(t => {
+      if (t.month !== currentMonth) {
+        if (currentMonth !== 0) html += '</div>';
+        html += `<div class="month-band"><div><div class="mb-title">${monthLabels[t.month]}</div></div><div class="mb-num">0${t.month}</div></div><div class="task-section">`;
+        currentMonth = t.month;
+        currentGroup = '';
+      }
+      if (t.group !== currentGroup) {
+        html += `<div class="task-group-title">${t.group}</div>`;
+        currentGroup = t.group;
+      }
+      html += `
+        <div class="task-item" id="ti-${t.id}" data-id="${t.id}">
+          <div class="task-check" onclick="studentToggle('${t.id}')">
+            <svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2.5" fill="none"/></svg>
+          </div>
+          <div class="task-body">
+            <div class="task-text">${t.text}</div>
+            ${t.notes ? `<div class="task-notes">${t.notes}</div>` : ''}
+            <div class="task-note-row">
+              <input class="task-note-input" id="note-${t.id}" type="text" placeholder="Add a note or evidence link for John…" oninput="noteChanged('${t.id}')"/>
+              <button class="note-save-btn" id="note-btn-${t.id}" onclick="saveNote('${t.id}')">Save</button>
+            </div>
+            <div class="mentor-comment" id="mc-${t.id}" style="display:none"></div>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  function applyProgressToStudentUI(data) {
+    TASKS.forEach(t => {
+      const el = document.getElementById('ti-'+t.id);
+      if (!el) return;
+      const entry = data[t.id] || {};
+      el.classList.toggle('done', !!entry.done);
+      const noteEl = document.getElementById('note-'+t.id);
+      if (noteEl && entry.note !== undefined && noteEl !== document.activeElement) noteEl.value = entry.note || '';
+      const mc = document.getElementById('mc-'+t.id);
+      if (mc) {
+        if (entry.mentorComment) {
+          mc.style.display = 'block';
+          mc.innerHTML = `<strong>John:</strong> ${entry.mentorComment}`;
+        } else { mc.style.display = 'none'; }
+      }
+    });
+  }
+
+  function updateStudentProgressBar(data) {
+    const done = TASKS.filter(t => data[t.id]?.done).length;
+    const pct  = Math.round((done / TASKS.length) * 100);
+    const bar  = document.getElementById('s-prog-bar');
+    const pctEl = document.getElementById('s-pct');
+    if (bar) bar.style.width = pct + '%';
+    if (pctEl) pctEl.textContent = pct + '%';
+    document.getElementById('s-done-count').textContent = done + ' / ' + TASKS.length + ' tasks done';
+  }
+
+  window.studentToggle = async function(taskId) {
+    if (!currentUser) return;
+    const ref = doc(db, "progress", currentUser.uid, "tasks", taskId);
+    const snap = await getDoc(ref);
+    const current = snap.exists() ? snap.data().done : false;
+    await setDoc(ref, { done: !current, updatedAt: serverTimestamp() }, { merge: true });
+  };
+
+  window.noteChanged = function(taskId) {
+    document.getElementById('note-btn-'+taskId).classList.add('unsaved');
+  };
+
+  window.saveNote = async function(taskId) {
+    if (!currentUser) return;
+    const note = document.getElementById('note-'+taskId).value;
+    const ref  = doc(db, "progress", currentUser.uid, "tasks", taskId);
+    await setDoc(ref, { note, updatedAt: serverTimestamp() }, { merge: true });
+    const btn = document.getElementById('note-btn-'+taskId);
+    btn.classList.remove('unsaved');
+    btn.textContent = 'Saved ✓';
+    setTimeout(() => btn.textContent = 'Save', 2000);
+  };
+
+  // ============================================================
+  // MENTOR VIEW — John
+  // ============================================================
+  async function loadMentorView() {
+    showScreen('mentor');
+    // Find student UID
+    const usersSnap = await getDocs(collection(db, "users"));
+    usersSnap.forEach(d => {
+      if (d.data().role === 'student') studentUID = d.id;
+    });
+    if (!studentUID) {
+      document.getElementById('mentor-content').innerHTML = '<div class="info-box"><strong>No student found yet.</strong> Daniel needs to log in at least once to appear here.</div>';
+      return;
+    }
+    renderMentorDashboard();
+    listenMentorProgress();
+  }
+
+  function renderMentorDashboard() {
+    const container = document.getElementById('mentor-content');
+    let html = '';
+    const monthLabels = {1:'Month 1',2:'Month 2',3:'Month 3',4:'Month 4',5:'Month 5',6:'Month 6'};
+    let currentMonth = 0;
+    let currentGroup = '';
+    TASKS.forEach(t => {
+      if (t.month !== currentMonth) {
+        if (currentMonth !== 0) html += '</div>';
+        html += `<div class="m-month-header">${monthLabels[t.month]}</div><div class="m-task-list">`;
+        currentMonth = t.month;
+        currentGroup = '';
+      }
+      if (t.group !== currentGroup) {
+        html += `<div class="task-group-title" style="padding-left:0">${t.group}</div>`;
+        currentGroup = t.group;
+      }
+      html += `
+        <div class="m-task-row" id="mtr-${t.id}">
+          <div class="m-status-dot" id="msd-${t.id}"></div>
+          <div class="m-task-info">
+            <div class="m-task-text">${t.text}</div>
+            <div class="m-task-meta" id="mmeta-${t.id}"></div>
+            <div class="m-note-display" id="mnote-${t.id}" style="display:none"></div>
+            <div class="m-comment-row">
+              <input class="m-comment-input" id="mc-input-${t.id}" type="text" placeholder="Leave feedback for Daniel on this task…"/>
+              <button class="m-comment-btn" onclick="saveMentorComment('${t.id}')">Send</button>
+            </div>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  function listenMentorProgress() {
+    if (!studentUID) return;
+    if (unsubProgress) unsubProgress();
+    const colRef = collection(db, "progress", studentUID, "tasks");
+    unsubProgress = onSnapshot(colRef, snap => {
+      const data = {};
+      snap.forEach(d => { data[d.id] = d.data(); });
+      applyProgressToMentorUI(data);
+      updateMentorSummary(data);
+    });
+  }
+
+  function applyProgressToMentorUI(data) {
+    TASKS.forEach(t => {
+      const entry = data[t.id] || {};
+      const dot   = document.getElementById('msd-'+t.id);
+      const meta  = document.getElementById('mmeta-'+t.id);
+      const noteEl = document.getElementById('mnote-'+t.id);
+      const row   = document.getElementById('mtr-'+t.id);
+      if (!dot) return;
+      const isDone = !!entry.done;
+      dot.className = 'm-status-dot ' + (isDone ? 'done' : 'pending');
+      if (row) row.classList.toggle('m-done', isDone);
+      if (meta) {
+        if (isDone && entry.updatedAt) {
+          const d = entry.updatedAt.toDate ? entry.updatedAt.toDate() : new Date();
+          meta.textContent = 'Completed ' + d.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
+        } else { meta.textContent = 'Not yet completed'; }
+      }
+      if (noteEl) {
+        if (entry.note) {
+          noteEl.style.display = 'block';
+          noteEl.innerHTML = `<strong>Daniel's note:</strong> ${entry.note}`;
+        } else { noteEl.style.display = 'none'; }
+      }
+      // Restore mentor comment input if already saved
+      const inp = document.getElementById('mc-input-'+t.id);
+      if (inp && entry.mentorComment && inp !== document.activeElement) inp.value = entry.mentorComment;
+    });
+  }
+
+  function updateMentorSummary(data) {
+    const done = TASKS.filter(t => data[t.id]?.done).length;
+    const pct  = Math.round((done / TASKS.length) * 100);
+    const bar  = document.getElementById('m-prog-bar');
+    if (bar) bar.style.width = pct + '%';
+    document.getElementById('m-pct').textContent = pct + '%';
+    document.getElementById('m-done-count').textContent = done + ' of ' + TASKS.length + ' tasks completed';
+
+    // Per-month mini stats
+    [1,2,3,4,5,6].forEach(m => {
+      const mTasks = TASKS.filter(t => t.month === m);
+      const mDone  = mTasks.filter(t => data[t.id]?.done).length;
+      const el = document.getElementById('m-stat-'+m);
+      if (el) el.textContent = mDone + '/' + mTasks.length;
+    });
+  }
+
+  window.saveMentorComment = async function(taskId) {
+    if (!studentUID) return;
+    const comment = document.getElementById('mc-input-'+taskId).value;
+    const ref = doc(db, "progress", studentUID, "tasks", taskId);
+    await setDoc(ref, { mentorComment: comment, mentorCommentAt: serverTimestamp() }, { merge: true });
+    const btn = document.querySelector(`[onclick="saveMentorComment('${taskId}')"]`);
+    if (btn) { btn.textContent = 'Sent ✓'; setTimeout(() => btn.textContent = 'Send', 2000); }
+  };
+
+  // ============================================================
+  // UI HELPERS
+  // ============================================================
+  function showScreen(name) {
+    ['setup-banner','login-screen','student-screen','mentor-screen'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    if (name === 'login')   { document.getElementById('login-screen').style.display = 'flex'; }
+    if (name === 'student') { document.getElementById('student-screen').style.display = 'block'; }
+    if (name === 'mentor')  { document.getElementById('mentor-screen').style.display = 'block'; }
+  }
+
+  function hideSetup() {
+    const el = document.getElementById('setup-banner');
+    if (el) el.style.display = 'none';
+  }
+
+  // Handle Enter key on login
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('login-pass').addEventListener('keydown', e => {
+      if (e.key === 'Enter') window.doLogin();
+    });
+    // Check if still on placeholder config
+    if (firebaseConfig.apiKey === "PASTE_YOUR_apiKey_HERE") {
+      document.getElementById('setup-banner').style.display = 'block';
+      document.getElementById('login-screen').style.display = 'none';
+    }
+  });
+
+  // Tab switching
+  window.switchTab = function(btn, tabId) {
+    btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const section = btn.closest('.section') || btn.closest('.tab-scope');
+    section.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    section.querySelector('#tab-'+tabId).classList.add('active');
+  };
+
+  // Copy email template
+  window.copyEmail = function(id) {
+    const el = document.getElementById(id);
+    const text = el.innerText.replace('Copy','').trim();
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = el.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+  };
+
+  // Sidebar nav scroll highlight
+  window.addEventListener('scroll', () => {
+    const items = document.querySelectorAll('.nav-item');
+    const sections = document.querySelectorAll('.section[id]');
+    let cur = '';
+    sections.forEach(s => { if (window.scrollY >= s.offsetTop - 130) cur = s.id; });
+    items.forEach(i => i.classList.toggle('active', i.getAttribute('href') === '#'+cur));
+    const st = document.getElementById('scroll-top');
+    if (st) st.classList.toggle('show', window.scrollY > 300);
+  });
+</script>
+
+<style>
+:root {
+  --navy:#0d1b2a; --navy2:#1a2d42; --gold:#e8a020; --gold-light:#f5c660;
+  --green:#27ae60; --red:#e74c3c; --cream:#fdf6e3;
+  --text:#1a1a2e; --muted:#6b7280; --border:#e2ddd0;
+  --card:#ffffff; --sidebar-w:270px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:var(--text);min-height:100vh;}
+
+/* ===== SETUP BANNER ===== */
+#setup-banner{
+  display:none;background:#1a1a2e;color:#fff;
+  padding:40px;text-align:center;min-height:100vh;
+  align-items:center;justify-content:center;flex-direction:column;
+}
+#setup-banner{display:flex;}
+#setup-banner h2{font-family:'Playfair Display',serif;font-size:2rem;color:var(--gold);margin-bottom:16px;}
+#setup-banner ol{text-align:left;max-width:560px;line-height:2.4;font-size:0.95rem;color:rgba(255,255,255,0.85);}
+#setup-banner ol li{margin-bottom:4px;}
+#setup-banner code{background:rgba(255,255,255,0.1);padding:2px 8px;border-radius:4px;font-family:'DM Mono',monospace;font-size:0.85rem;}
+#setup-banner .note{margin-top:20px;padding:14px 20px;background:rgba(232,160,32,0.15);border-left:4px solid var(--gold);border-radius:0 8px 8px 0;text-align:left;max-width:560px;font-size:0.88rem;color:rgba(255,255,255,0.75);}
+
+/* ===== LOGIN ===== */
+#login-screen{
+  display:none;min-height:100vh;
+  align-items:center;justify-content:center;
+  background:var(--navy);
+  background-image:radial-gradient(ellipse at 30% 60%, rgba(232,160,32,0.1) 0%, transparent 60%);
+}
+.login-box{
+  background:#fff;border-radius:20px;padding:44px 40px;
+  width:100%;max-width:400px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);
+}
+.login-logo{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:var(--navy);text-align:center;margin-bottom:6px;}
+.login-logo span{color:var(--gold);}
+.login-sub{text-align:center;font-size:0.85rem;color:var(--muted);margin-bottom:32px;}
+.form-label{font-size:0.78rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--navy);margin-bottom:6px;display:block;}
+.form-input{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.95rem;outline:none;transition:border .2s;margin-bottom:16px;}
+.form-input:focus{border-color:var(--gold);}
+.login-btn{width:100%;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;transition:background .2s;margin-top:4px;}
+.login-btn:hover{background:var(--gold);color:var(--navy);}
+.login-btn:disabled{opacity:0.6;cursor:not-allowed;}
+.login-err{color:var(--red);font-size:0.85rem;text-align:center;margin-top:10px;min-height:20px;}
+
+/* ===== SIDEBAR ===== */
+#sidebar{position:fixed;left:0;top:0;width:var(--sidebar-w);height:100vh;background:var(--navy);overflow-y:auto;z-index:100;display:flex;flex-direction:column;box-shadow:4px 0 20px rgba(0,0,0,0.2);}
+#sidebar-header{padding:28px 24px 20px;border-bottom:1px solid rgba(255,255,255,0.08);}
+#sidebar-header .logo{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;color:#fff;line-height:1.3;}
+#sidebar-header .logo span{color:var(--gold);}
+#sidebar-header .tagline{font-size:0.7rem;color:rgba(255,255,255,0.4);margin-top:5px;letter-spacing:0.08em;text-transform:uppercase;}
+.sidebar-progress{padding:16px 24px;border-bottom:1px solid rgba(255,255,255,0.08);}
+.sidebar-progress label{font-size:0.7rem;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;}
+.sidebar-progress .pct{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;color:var(--gold);margin:2px 0;}
+.sidebar-progress .sub{font-size:0.75rem;color:rgba(255,255,255,0.35);margin-bottom:8px;}
+.prog-bar-wrap{background:rgba(255,255,255,0.1);border-radius:99px;height:6px;}
+.prog-bar{background:var(--gold);border-radius:99px;height:6px;transition:width .5s ease;width:0%;}
+#sidebar nav{flex:1;padding:14px 0;}
+.nav-section{padding:8px 24px 4px;font-size:0.67rem;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 24px;color:rgba(255,255,255,0.65);cursor:pointer;transition:all .2s;font-size:0.87rem;border-left:3px solid transparent;text-decoration:none;}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,0.06);border-left-color:rgba(232,160,32,0.5);}
+.nav-item.active{color:#fff;background:rgba(232,160,32,0.12);border-left-color:var(--gold);font-weight:600;}
+.nav-icon{font-size:1rem;flex-shrink:0;}
+.sidebar-user{padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08);margin-top:auto;}
+.sidebar-user .u-name{font-weight:600;font-size:0.9rem;color:#fff;}
+.sidebar-user .u-role{font-size:0.72rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.06em;}
+.logout-btn{margin-top:10px;width:100%;padding:8px;background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;font-size:0.82rem;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.logout-btn:hover{background:rgba(231,76,60,0.2);color:#fff;border-color:rgba(231,76,60,0.4);}
+
+/* ===== MAIN LAYOUT ===== */
+#main{margin-left:var(--sidebar-w);min-height:100vh;}
+
+/* Hero */
+#hero{background:var(--navy2);background-image:radial-gradient(ellipse at 70% 50%,rgba(232,160,32,0.12) 0%,transparent 60%);color:#fff;padding:60px 60px 50px;position:relative;overflow:hidden;}
+#hero::before{content:'';position:absolute;top:-60px;right:-60px;width:280px;height:280px;border-radius:50%;border:40px solid rgba(232,160,32,0.06);pointer-events:none;}
+.eyebrow{font-size:0.73rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);margin-bottom:12px;font-family:'DM Mono',monospace;}
+#hero h1{font-family:'Playfair Display',serif;font-size:2.8rem;font-weight:900;line-height:1.1;max-width:580px;margin-bottom:14px;}
+#hero h1 em{color:var(--gold);font-style:normal;}
+#hero p{color:rgba(255,255,255,0.6);max-width:500px;line-height:1.7;font-size:0.95rem;}
+.hero-stats{display:flex;gap:32px;margin-top:28px;flex-wrap:wrap;}
+.hero-stat .num{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;color:var(--gold);}
+.hero-stat .lbl{font-size:0.75rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.06em;}
+
+/* Content */
+#content{padding:36px 60px 80px;max-width:940px;}
+
+/* Section */
+.section{margin-bottom:60px;}
+.section-header{display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:14px;border-bottom:2px solid var(--border);}
+.section-badge{width:40px;height:40px;border-radius:10px;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+.section-header h2{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--navy);}
+.section-header p{font-size:0.82rem;color:var(--muted);margin-top:2px;}
+
+/* Cards */
+.card{background:var(--card);border-radius:14px;padding:22px 26px;margin-bottom:14px;border:1px solid var(--border);box-shadow:0 2px 10px rgba(0,0,0,0.04);}
+.card h3{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;margin-bottom:8px;color:var(--navy);}
+.card p{font-size:0.9rem;line-height:1.7;color:#444;}
+.card a{color:var(--gold);text-decoration:none;font-weight:600;}
+.card ul{margin:8px 0 0 18px;line-height:2.2;font-size:0.9rem;color:#444;}
+.info-box{background:#fffbf0;border-left:4px solid var(--gold);border-radius:0 10px 10px 0;padding:13px 17px;margin:14px 0;font-size:0.88rem;line-height:1.6;color:#555;}
+.info-box strong{color:var(--navy);}
+.warn-box{background:#fff8f0;border-left:4px solid #f39c12;border-radius:0 10px 10px 0;padding:13px 17px;margin:14px 0;font-size:0.88rem;line-height:1.6;color:#555;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:700px){.grid-2{grid-template-columns:1fr;}}
+
+/* Month band */
+.month-band{background:var(--navy);color:#fff;border-radius:12px;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;margin-top:28px;}
+.mb-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;}
+.mb-sub{font-size:0.78rem;color:rgba(255,255,255,0.5);margin-top:2px;}
+.mb-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:var(--gold);opacity:0.3;}
+.task-section{margin-bottom:8px;}
+.task-group-title{font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding-left:4px;font-family:'DM Mono',monospace;}
+
+/* Student Task Items */
+.task-item{display:flex;align-items:flex-start;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px;transition:all .2s;position:relative;overflow:hidden;}
+.task-item:hover{border-color:var(--gold);box-shadow:0 2px 10px rgba(232,160,32,0.1);}
+.task-item.done{background:#f4fdf7;border-color:#a8d8b9;}
+.task-item.done::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--green);}
+.task-check{width:22px;height:22px;border-radius:6px;border:2px solid #d0ccc4;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all .2s;margin-top:1px;}
+.task-check:hover{border-color:var(--green);}
+.task-item.done .task-check{background:var(--green);border-color:var(--green);}
+.task-item.done .task-check svg{display:block;}
+.task-check svg{display:none;}
+.task-body{flex:1;}
+.task-text{font-size:0.9rem;line-height:1.5;color:#333;}
+.task-item.done .task-text{text-decoration:line-through;color:#aaa;}
+.task-notes{font-size:0.78rem;color:var(--muted);margin-top:3px;}
+.task-note-row{display:flex;gap:8px;margin-top:8px;}
+.task-note-input{flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:7px;font-size:0.82rem;font-family:'DM Sans',sans-serif;outline:none;transition:border .2s;}
+.task-note-input:focus{border-color:var(--gold);}
+.note-save-btn{padding:7px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:background .2s;}
+.note-save-btn:hover{background:var(--gold);color:var(--navy);}
+.note-save-btn.unsaved{background:var(--gold);color:var(--navy);}
+.mentor-comment{margin-top:8px;padding:8px 12px;background:#fff8e1;border-radius:7px;font-size:0.82rem;color:#555;border-left:3px solid var(--gold);}
+.mentor-comment strong{color:var(--navy);}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;background:#ede9e0;border-radius:10px;padding:4px;margin-bottom:18px;}
+.tab-btn{flex:1;padding:8px 12px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--muted);transition:all .2s;font-weight:500;}
+.tab-btn.active{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,0.1);font-weight:600;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* Email template */
+.email-template{background:#f8f7ff;border:1px solid #d8d4ff;border-radius:12px;padding:22px;margin:14px 0;font-family:'DM Mono',monospace;font-size:0.82rem;line-height:1.9;color:#333;white-space:pre-wrap;position:relative;}
+.email-label{font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:#8b83cc;margin-bottom:10px;font-family:'DM Sans',sans-serif;font-weight:600;}
+.copy-btn{position:absolute;top:12px;right:12px;background:var(--navy);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;}
+.copy-btn:hover{background:var(--gold);color:var(--navy);}
+
+/* Resource pills */
+.resource-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.resource-pill{display:inline-flex;align-items:center;gap:6px;background:var(--navy);color:#fff;padding:6px 13px;border-radius:99px;font-size:0.8rem;text-decoration:none;font-weight:500;transition:background .2s;}
+.resource-pill:hover{background:var(--gold);color:var(--navy);}
+
+/* Timeline */
+.timeline{position:relative;padding-left:26px;}
+.timeline::before{content:'';position:absolute;left:7px;top:8px;bottom:8px;width:2px;background:var(--border);}
+.tl-item{position:relative;margin-bottom:22px;}
+.tl-dot{position:absolute;left:-22px;top:4px;width:13px;height:13px;border-radius:50%;background:var(--navy);border:3px solid var(--gold);}
+.tl-month{font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--gold);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px;}
+.tl-title{font-weight:600;font-size:0.92rem;color:var(--navy);margin-bottom:3px;}
+.tl-desc{font-size:0.84rem;color:var(--muted);line-height:1.6;}
+.tl-item ul{margin:5px 0 0 16px;}
+.tl-item li{font-size:0.84rem;color:#555;line-height:1.8;}
+
+/* ===== MENTOR SCREEN ===== */
+#mentor-screen{display:none;}
+.mentor-hero{background:var(--navy2);color:#fff;padding:50px 60px 40px;background-image:radial-gradient(ellipse at 80% 40%,rgba(232,160,32,0.1) 0%,transparent 60%);}
+.mentor-hero h1{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:900;}
+.mentor-hero h1 em{color:var(--gold);font-style:normal;}
+.mentor-hero p{font-size:0.9rem;color:rgba(255,255,255,0.55);margin-top:8px;}
+.mentor-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:28px 60px;background:#fff;border-bottom:1px solid var(--border);}
+.m-stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
+.m-stat-card .m-stat-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--navy);}
+.m-stat-card .m-stat-lbl{font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;}
+.m-month-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:20px 0;}
+.m-month-cell{background:#f5f0e8;border-radius:8px;padding:10px;text-align:center;}
+.m-month-cell .m-cell-month{font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;}
+.m-month-cell .m-cell-stat{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--navy);}
+.mentor-content{padding:32px 60px 80px;max-width:940px;}
+.m-month-header{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--navy);padding:14px 0 8px;border-bottom:2px solid var(--border);margin-bottom:14px;margin-top:24px;}
+.m-task-list{margin-bottom:8px;}
+.m-task-row{display:flex;align-items:flex-start;gap:12px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px;transition:all .2s;}
+.m-task-row.m-done{background:#f4fdf7;border-color:#a8d8b9;}
+.m-status-dot{width:14px;height:14px;border-radius:50%;background:#e0ddd7;flex-shrink:0;margin-top:4px;transition:background .3s;}
+.m-status-dot.done{background:var(--green);}
+.m-status-dot.pending{background:#e0ddd7;}
+.m-task-info{flex:1;}
+.m-task-text{font-size:0.9rem;color:#333;line-height:1.4;}
+.m-task-row.m-done .m-task-text{color:#aaa;text-decoration:line-through;}
+.m-task-meta{font-size:0.76rem;color:var(--muted);margin-top:3px;}
+.m-task-row.m-done .m-task-meta{color:var(--green);}
+.m-note-display{margin-top:6px;padding:7px 11px;background:#fff8e1;border-radius:7px;font-size:0.8rem;color:#555;border-left:3px solid var(--gold);}
+.m-comment-row{display:flex;gap:8px;margin-top:8px;}
+.m-comment-input{flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:7px;font-size:0.8rem;font-family:'DM Sans',sans-serif;outline:none;transition:border .2s;}
+.m-comment-input:focus{border-color:var(--gold);}
+.m-comment-btn{padding:7px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;}
+.m-comment-btn:hover{background:var(--gold);color:var(--navy);}
+
+/* Scroll top */
+#scroll-top{position:fixed;bottom:28px;right:28px;background:var(--navy);color:var(--gold);border:none;border-radius:50%;width:42px;height:42px;font-size:1.1rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:200;}
+#scroll-top.show{display:flex;}
+@media(max-width:800px){:root{--sidebar-w:0px;}#sidebar{transform:translateX(-100%);}#main{margin-left:0;}#hero,#content,.mentor-hero,.mentor-summary,.mentor-content{padding-left:20px;padding-right:20px;}#hero h1{font-size:2rem;}.mentor-summary{grid-template-columns:1fr 1fr;}.m-month-grid{grid-template-columns:repeat(3,1fr);}}
+</style>
+</head>
+<body>
+
+<!-- ======== SETUP BANNER ======== -->
+<div id="setup-banner">
+  <h2>⚙️ Setup Required — Read This First, John</h2>
+  <ol style="margin-top:16px;">
+    <li>Open this HTML file in a code editor (VS Code, Notepad++, etc.)</li>
+    <li>Go to <strong>Firebase Console</strong> → <code>console.firebase.google.com</code></li>
+    <li>Create a new project (e.g. "daniel-abroad")</li>
+    <li>Add a Web app → copy the <code>firebaseConfig</code> object values into this file</li>
+    <li>Enable <strong>Authentication → Email/Password</strong> sign-in</li>
+    <li>Create two users: your own email + Daniel's email (set a password for each)</li>
+    <li>Enable <strong>Firestore Database</strong> (start in test mode)</li>
+    <li>Replace <code>MENTOR_EMAIL</code> in this file with YOUR email address</li>
+    <li>Save the file — done! Share it with Daniel or host it on Vercel/GitHub Pages</li>
+  </ol>
+  <div class="note">💡 This is the exact same setup you did for Glory Songs. It will take you about 10 minutes.</div>
+</div>
+
+<!-- ======== LOGIN ======== -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Daniel's Path <span>Abroad</span></div>
+    <div class="login-sub">Coached by John · FUOYE CS → World</div>
+    <label class="form-label" for="login-email">Email Address</label>
+    <input class="form-input" id="login-email" type="email" placeholder="Enter your email"/>
+    <label class="form-label" for="login-pass">Password</label>
+    <input class="form-input" id="login-pass" type="password" placeholder="Enter your password"/>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ======== STUDENT SCREEN (Daniel) ======== -->
+<div id="student-screen" style="display:none;">
+
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div id="sidebar-header">
+      <div class="logo">Daniel's Path <span>Abroad</span></div>
+      <div class="tagline">FUOYE CS → World · Coached by John</div>
+    </div>
+    <div class="sidebar-progress">
+      <label>Your Progress</label>
+      <div class="pct" id="s-pct">0%</div>
+      <div class="sub" id="s-done-count">0 / 31 tasks done</div>
+      <div class="prog-bar-wrap"><div class="prog-bar" id="s-prog-bar"></div></div>
+    </div>
+    <nav>
+      <div class="nav-section">Start Here</div>
+      <a class="nav-item active" href="#overview"><span class="nav-icon">🏠</span> Overview</a>
+      <a class="nav-item" href="#timeline"><span class="nav-icon">📅</span> 6-Month Roadmap</a>
+      <div class="nav-section">The Modules</div>
+      <a class="nav-item" href="#m1"><span class="nav-icon">🎯</span> M1: Know Yourself</a>
+      <a class="nav-item" href="#m2"><span class="nav-icon">🔍</span> M2: Find Programmes</a>
+      <a class="nav-item" href="#m3"><span class="nav-icon">👨‍🏫</span> M3: Find Professors</a>
+      <a class="nav-item" href="#m4"><span class="nav-icon">✉️</span> M4: Email Professors</a>
+      <a class="nav-item" href="#m5"><span class="nav-icon">💰</span> M5: Scholarships</a>
+      <a class="nav-item" href="#m6"><span class="nav-icon">📄</span> M6: Documents</a>
+      <a class="nav-item" href="#m7"><span class="nav-icon">✍️</span> M7: SOP Writing</a>
+      <a class="nav-item" href="#m8"><span class="nav-icon">🚀</span> M8: Apply</a>
+      <a class="nav-item" href="#m9"><span class="nav-icon">🛂</span> M9: Visa & Travel</a>
+      <div class="nav-section">My Work</div>
+      <a class="nav-item" href="#my-tasks"><span class="nav-icon">✅</span> My Task List</a>
+      <a class="nav-item" href="#resources"><span class="nav-icon">🔗</span> Resources</a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="u-name" id="s-name">Daniel</div>
+      <div class="u-role">Student</div>
+      <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div id="main">
+    <div id="hero">
+      <div class="eyebrow">Prepared by John · FUOYE Computer Science → World</div>
+      <h1>Daniel's Roadmap to <em>Study Abroad</em></h1>
+      <p>This is your personal guide to getting into a funded university programme in Canada, Australia, or Europe — step by step, from today until you land.</p>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="num">9</div><div class="lbl">Modules</div></div>
+        <div class="hero-stat"><div class="num">6</div><div class="lbl">Months</div></div>
+        <div class="hero-stat"><div class="num">31</div><div class="lbl">Tasks</div></div>
+        <div class="hero-stat"><div class="num">100%</div><div class="lbl">Free Paths</div></div>
+      </div>
+    </div>
+
+    <div id="content">
+
+      <!-- OVERVIEW -->
+      <div class="section" id="overview">
+        <div class="section-header"><div class="section-badge">🏠</div><div><h2>Welcome — Read This First</h2><p>What this guide is and how to use it</p></div></div>
+        <div class="card"><h3>Who This Is For</h3><p>You are a Computer Science student at FUOYE who wants to study abroad — ideally in Canada, Australia, or Europe — for a Master's or PhD. Your family income is limited, so <strong>scholarships and funded programmes</strong> are not a bonus: they are the plan. This guide will show you it is entirely possible, and many Nigerians do it every year.</p></div>
+        <div class="info-box"><strong>Good news:</strong> Many universities in Canada (research-based MSc/PhD), Germany, Norway, and some in the UK offer <strong>fully funded or heavily subsidised</strong> graduate programmes. You do not need to be rich. You need to be strategic.</div>
+        <div class="grid-2">
+          <div class="card"><h3>How to Use This Guide</h3><p>Go through each Module in order. Use the <strong>Task List</strong> at the bottom to check off items. Add notes and evidence links on each task — John can see them and will give you feedback.</p></div>
+          <div class="card"><h3>John Is Watching 👀</h3><p>John can see your progress in real time. Every task you check, every note you write — he sees it. Complete your tasks, write honest notes, and ask questions before your review sessions.</p></div>
+        </div>
+        <div class="warn-box"><strong>⚠️ Key rule:</strong> Only apply to <em>funded</em> pathways. Unless a scholarship or funding is clearly identified, do not apply to programmes that require self-funded tuition.</div>
+      </div>
+
+      <!-- TIMELINE -->
+      <div class="section" id="timeline">
+        <div class="section-header"><div class="section-badge">📅</div><div><h2>Your 6-Month Roadmap</h2><p>A realistic, phased plan from today to application</p></div></div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-dot"></div><div class="tl-month">Month 1 — Now</div><div class="tl-title">🔍 Research & Self-Assessment</div><div class="tl-desc">Build your academic profile. Identify target countries and programmes. Start shortlisting universities.</div><ul><li>Complete Module 1 (Know Yourself)</li><li>Apply for international passport immediately</li><li>Request unofficial transcripts</li><li>Identify 10–15 target universities</li></ul></div>
+          <div class="tl-item"><div class="tl-dot"></div><div class="tl-month">Month 2</div><div class="tl-title">👨‍🏫 Outreach & Language Test</div><div class="tl-desc">Contact professors, register for English language tests, start scholarship research.</div><ul><li>Email 15–20 professors (Module 4)</li><li>Register for IELTS or TOEFL and study</li><li>Identify 5+ scholarship deadlines</li><li>Create your academic CV</li></ul></div>
+          <div class="tl-item"><div class="tl-dot"></div><div class="tl-month">Month 3</div><div class="tl-title">📄 Document Preparation</div><div class="tl-desc">Gather every document. Start writing your Statement of Purpose.</div><ul><li>Obtain official transcripts + certified copies</li><li>Request Letters of Recommendation</li><li>First draft of SOP — send to John for review</li><li>Take IELTS/TOEFL exam</li></ul></div>
+          <div class="tl-item"><div class="tl-dot"></div><div class="tl-month">Month 4</div><div class="tl-title">✍️ Scholarships & Final Drafts</div><div class="tl-desc">Submit scholarship applications. Finalise SOP.</div><ul><li>Submit Mastercard Foundation, DAAD, or other apps</li><li>Final SOP completed and reviewed by John</li><li>All recommendation letters collected</li></ul></div>
+          <div class="tl-item"><div class="tl-dot"></div><div class="tl-month">Month 5</div><div class="tl-title">🚀 University Applications</div><div class="tl-desc">Submit applications to your shortlisted universities.</div><ul><li>Submit 5–8 university applications</li><li>Upload all documents to portals</li></ul></div>
+          <div class="tl-item"><div class="tl-dot"></div><div class="tl-month">Month 6</div><div class="tl-title">🛂 Await Decisions & Visa Prep</div><div class="tl-desc">Track applications and begin visa documentation.</div><ul><li>Follow up with admission offices</li><li>Accept a funded offer — show John first</li><li>Begin student visa application</li></ul></div>
+        </div>
+      </div>
+
+      <!-- MODULE 1 -->
+      <div class="section" id="m1">
+        <div class="section-header"><div class="section-badge">🎯</div><div><h2>Module 1: Know Yourself First</h2><p>Build your academic profile before anything else</p></div></div>
+        <div class="card"><h3>Your Academic Profile</h3><p>Before applying anywhere, write down your answers honestly:</p></div>
+        <div class="grid-2">
+          <div class="card"><h3>🎓 CGPA</h3><p>What is your current CGPA? Most funded MSc programmes want <strong>3.0+/5.0 (60%+)</strong>. A lower GPA can be overcome with strong research experience and an excellent SOP.</p></div>
+          <div class="card"><h3>💻 Projects</h3><p>List every coding project, final year project, or research work you've done, no matter how small. These matter enormously for postgraduate applications.</p></div>
+          <div class="card"><h3>📖 Publications</h3><p>Have you co-authored any paper — even a conference poster? If not, your FYP topic can become your research proposal. Write the topic down.</p></div>
+          <div class="card"><h3>🌍 English Proficiency</h3><p>Most universities require <strong>IELTS 6.5+</strong> or <strong>TOEFL iBT 90+</strong>. Plan your test date in Month 2–3. Free preparation resources exist.</p></div>
+        </div>
+        <div class="info-box"><strong>Task:</strong> Open a Google Doc and write a 1-page "Academic Profile" — CGPA, all projects, FYP topic, any awards, and your research interests. Share it with John for review.</div>
+      </div>
+
+      <!-- MODULE 2 -->
+      <div class="section" id="m2">
+        <div class="section-header"><div class="section-badge">🔍</div><div><h2>Module 2: Find the Right Programmes</h2><p>Research universities and identify the right fit</p></div></div>
+        <div class="tab-scope">
+          <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(this,'canada')">🇨🇦 Canada</button>
+            <button class="tab-btn" onclick="switchTab(this,'germany')">🇩🇪 Germany</button>
+            <button class="tab-btn" onclick="switchTab(this,'australia')">🇦🇺 Australia</button>
+            <button class="tab-btn" onclick="switchTab(this,'norway')">🇳🇴 Norway</button>
+          </div>
+          <div class="tab-panel active" id="tab-canada">
+            <div class="card"><h3>Canada — Research-Based MSc/PhD (Funded)</h3><p>The best route is a <strong>research-based (thesis) Master's</strong>. Supervisors fund students through research grants — you receive a stipend and tuition waiver. Key universities for CS:</p><ul><li><strong>Memorial University of Newfoundland</strong> — lowest tuition in Canada, very international-friendly</li><li><strong>University of Manitoba</strong> — lower cost of living, active funding</li><li><strong>University of Alberta</strong> — affordable province, strong AI research</li><li><strong>Dalhousie University</strong> — funded research positions</li><li><strong>University of Waterloo</strong> — world-class CS</li></ul></div>
+            <div class="info-box"><strong>How to search:</strong> Go to <a href="https://www.findamasters.com" target="_blank">findamasters.com</a> or <a href="https://www.mastersportal.eu" target="_blank">mastersportal.eu</a> → filter Canada + Computer Science + funded.</div>
+          </div>
+          <div class="tab-panel" id="tab-germany">
+            <div class="card"><h3>Germany — Near-Zero Tuition</h3><p>Public universities charge only ~€150–350/semester. Many programmes are fully in English. DAAD scholarships can cover living costs too.</p><ul><li>TU Munich, TU Berlin, KIT Karlsruhe — top CS schools</li><li>University of Stuttgart, University of Hamburg</li><li>Search at: <a href="https://www.daad.de/en/" target="_blank">daad.de</a></li></ul></div>
+          </div>
+          <div class="tab-panel" id="tab-australia">
+            <div class="card"><h3>Australia — Research Degrees + Scholarships</h3><p>The <strong>Research Training Program (RTP)</strong> waives tuition for international PhD students. Check university-specific scholarships at Monash, University of Melbourne, ANU, UNSW, University of Queensland.</p></div>
+          </div>
+          <div class="tab-panel" id="tab-norway">
+            <div class="card"><h3>Norway & Nordic Countries — Free Tuition</h3><p>Norway's public universities charge <strong>no tuition</strong> for anyone. You only cover living costs. Also consider Sweden (KTH, Uppsala), Finland (Aalto), Denmark (DTU).</p><ul><li>University of Oslo, NTNU (Trondheim), University of Bergen</li></ul></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODULE 3 -->
+      <div class="section" id="m3">
+        <div class="section-header"><div class="section-badge">👨‍🏫</div><div><h2>Module 3: Find Professors & Read Research</h2><p>The most important module for research-based programmes</p></div></div>
+        <div class="card"><h3>Why This Matters</h3><p>For funded research degrees, a professor must agree to supervise you <em>before</em> you are admitted. Without a willing supervisor, your application will likely be rejected even with excellent grades.</p></div>
+        <div class="card"><h3>Step 1 — Search for Professors</h3><ul><li><strong>Google Scholar:</strong> Search your research interest (e.g. "machine learning network security"). Click an author name → see their university and all papers.</li><li><strong>ResearchGate:</strong> Search by topic. See recent publications and activity.</li><li><strong>University department websites:</strong> Go to the CS faculty page. Look for "Prospective Students" or "Graduate Students Wanted" links.</li><li><strong>IEEE Xplore / ACM Digital Library / arXiv:</strong> Search your area. Find papers you like and look up the corresponding author.</li></ul></div>
+        <div class="card"><h3>Step 2 — Read Their Recent Paper</h3><p>Before emailing, read at least one paper from the last 2 years. Focus on:</p><ul><li><strong>Abstract:</strong> What problem are they solving?</li><li><strong>Introduction:</strong> Why does it matter?</li><li><strong>Conclusion / Future Work:</strong> What do they plan to do next? This is what you offer to continue.</li></ul></div>
+        <div class="info-box"><strong>Get papers free:</strong> Use <a href="https://sci-hub.se" target="_blank">Sci-Hub.se</a> (paste the DOI), <a href="https://unpaywall.org" target="_blank">Unpaywall</a> browser extension, or Google Scholar's free PDF links.</div>
+      </div>
+
+      <!-- MODULE 4 -->
+      <div class="section" id="m4">
+        <div class="section-header"><div class="section-badge">✉️</div><div><h2>Module 4: How to Email a Professor</h2><p>The email that can change your life — done right</p></div></div>
+        <div class="card"><h3>The Golden Rules</h3><ul><li>Keep it <strong>short</strong> — 3–4 short paragraphs maximum</li><li><strong>Personalise every email</strong> — mention their specific paper by title</li><li>Show you actually <strong>read their work</strong> — one specific sentence</li><li>State your background and CGPA clearly</li><li>Attach your CV</li><li>Use your university email address</li><li>Follow up once after 2 weeks if no reply — never more</li></ul></div>
+        <div class="email-label">📧 Professor Email Template</div>
+        <div class="email-template" id="email-tpl-1"><button class="copy-btn" onclick="copyEmail('email-tpl-1')">Copy</button>
+Subject: Prospective Graduate Student — [Research Area] — [Your Name]
+
+Dear Professor [Last Name],
+
+I am [Your Name], a final-year Computer Science student at the Federal University of Oye-Ekiti (FUOYE), Nigeria, graduating in [Month Year] with a CGPA of [X/5.0]. I am writing to inquire about PhD/MSc research opportunities in your group starting [e.g. September 2026].
+
+I recently read your paper "[Exact Paper Title]" ([Journal/Conference, Year]), and I found your approach to [specific aspect — 1 sentence] particularly compelling. I am especially interested in extending this work toward [your specific angle or the future work they mentioned].
+
+My research background includes [1–2 sentences on your FYP or relevant project]. I believe this aligns well with your group's current research direction.
+
+I have attached my CV for your consideration. If you are currently accepting students, I would be glad to provide transcripts, a research statement, or a writing sample at your convenience.
+
+Thank you for your time.
+
+Sincerely,
+[Your Full Name]
+Federal University of Oye-Ekiti (FUOYE) | B.Sc. Computer Science
+[Email] | [LinkedIn or GitHub]</div>
+        <div class="warn-box"><strong>Do NOT:</strong> "I came to know about you through the internet." | "I am hardworking and dedicated." | Copy-paste the same email to all professors. | Ask about funding in the first email.</div>
+      </div>
+
+      <!-- MODULE 5 -->
+      <div class="section" id="m5">
+        <div class="section-header"><div class="section-badge">💰</div><div><h2>Module 5: Scholarships for Nigerians</h2><p>Realistic funding sources open to you</p></div></div>
+        <div class="info-box"><strong>Strategy:</strong> Apply for both (1) university-based funding (research stipends, assistantships) AND (2) external scholarships. Never rely on only one.</div>
+        <div class="grid-2">
+          <div class="card"><h3>🌍 Mastercard Foundation Scholars</h3><p>Covers tuition, living expenses, and travel for African students. One of the most powerful scholarships for Nigerians. Deadline: usually October–December annually.</p><div class="resource-list"><a class="resource-pill" href="https://mastercardfdn.org/all/scholars/" target="_blank">Apply Here</a></div></div>
+          <div class="card"><h3>🇩🇪 DAAD Scholarships (Germany)</h3><p>Full scholarships for African students to study in Germany. Covers tuition, living allowance, travel. Highly respected.</p><div class="resource-list"><a class="resource-pill" href="https://www.daad.de/en/study-and-research-in-germany/scholarships/" target="_blank">DAAD Portal</a></div></div>
+          <div class="card"><h3>🇨🇦 Vanier Canada Graduate Scholarships</h3><p>$50,000 CAD/year for 3 years for PhD students. Very competitive — apply if your CGPA and research experience are strong.</p><div class="resource-list"><a class="resource-pill" href="https://vanier.gc.ca" target="_blank">Vanier CGS</a></div></div>
+          <div class="card"><h3>🌐 Commonwealth Scholarships</h3><p>Fully funded scholarships to study in the UK for Nigerian citizens. Covers tuition, living, and travel.</p><div class="resource-list"><a class="resource-pill" href="https://cscuk.fcdo.gov.uk/scholarships/" target="_blank">Apply Here</a></div></div>
+          <div class="card"><h3>🎓 University Internal Funding</h3><p>When applying to research MSc/PhD, always ask: "Are there departmental funding, teaching assistantships, or research assistantships available?" Many universities offer these on request.</p></div>
+          <div class="card"><h3>🔎 Find More Scholarships</h3><p>Use these aggregator sites to find new opportunities:</p><div class="resource-list"><a class="resource-pill" href="https://scholarshipdb.net" target="_blank">ScholarshipDB</a><a class="resource-pill" href="https://www.scholars4dev.com" target="_blank">Scholars4Dev</a></div></div>
+        </div>
+      </div>
+
+      <!-- MODULE 6 -->
+      <div class="section" id="m6">
+        <div class="section-header"><div class="section-badge">📄</div><div><h2>Module 6: Your Documents Checklist</h2><p>Get these ready early — some take months</p></div></div>
+        <div class="warn-box"><strong>⚠️ Start your passport and transcripts today.</strong> Nigerian passports can take 6–12 weeks. Official transcripts from your university can take 4–8 weeks. Do not wait.</div>
+        <div class="card"><h3>📘 Passport</h3><p>Apply for your Nigerian international passport immediately via the NIS portal. Allow <strong>2–3 months</strong>. Book appointment, pay fee (~₦35,000), attend office.</p><div class="resource-list"><a class="resource-pill" href="https://passport.immigration.gov.ng" target="_blank">NIS Portal</a></div></div>
+        <div class="card"><h3>📜 Academic Transcripts</h3><p>Request <strong>official transcripts</strong> from your university registry — both sealed copies (for direct submission) and certified personal copies. Start now.</p></div>
+        <div class="card"><h3>📋 Full Documents List</h3><ul><li><strong>Academic CV</strong> — education, CGPA, projects, skills, awards</li><li><strong>Statement of Purpose (SOP)</strong> — see Module 7</li><li><strong>3 Letters of Recommendation</strong> — ask lecturers who know your work. Give 6 weeks notice.</li><li><strong>English Language Certificate</strong> — IELTS, TOEFL, or Duolingo English Test</li><li><strong>Birth Certificate</strong> — certified copy</li><li><strong>Research Proposal</strong> — 1–3 pages for PhD applications</li></ul></div>
+      </div>
+
+      <!-- MODULE 7 -->
+      <div class="section" id="m7">
+        <div class="section-header"><div class="section-badge">✍️</div><div><h2>Module 7: Writing Your Statement of Purpose</h2><p>The most important document in your application</p></div></div>
+        <div class="card"><h3>What is an SOP?</h3><p>A 1–2 page essay where you explain: who you are, what you have done, what you want to research, and why this university/professor is the right fit. This is where you win or lose the admission decision.</p></div>
+        <div class="card"><h3>SOP Structure — Follow This Exactly</h3><ul><li><strong>Para 1 — The Hook:</strong> Open with a specific CS problem that excites you. Not "I have always loved computers." Instead: "The challenge of securing AI systems against adversarial attacks became real to me when..."</li><li><strong>Para 2 — Your Background:</strong> Your degree, CGPA, most relevant projects. Be specific and use numbers.</li><li><strong>Para 3 — Your Research Interest:</strong> What specific problem do you want to solve? Why does it matter?</li><li><strong>Para 4 — Why This University/Professor:</strong> Name the professor. Mention their paper. Explain why their lab is where your research belongs. Never be generic.</li><li><strong>Para 5 — Future Goals:</strong> What will you do after the degree?</li></ul></div>
+        <div class="info-box"><strong>Task:</strong> Write a first rough draft — even if it's bad. Use the structure above. Send to John. The first draft is always bad. That is fine. Write it anyway.</div>
+        <div class="warn-box"><strong>Avoid:</strong> "I have always been passionate about computers since childhood." | Listing your CV again in paragraph form. | Vague research interests. | Using the same SOP for every university — customise Para 4 each time.</div>
+      </div>
+
+      <!-- MODULE 8 -->
+      <div class="section" id="m8">
+        <div class="section-header"><div class="section-badge">🚀</div><div><h2>Module 8: Submitting Your Applications</h2><p>How to apply smartly and track everything</p></div></div>
+        <div class="card"><h3>How Many to Apply To?</h3><p>Apply to <strong>5–8 universities</strong>: 2 stretch schools, 3–4 target schools, 2 safety schools. Prioritise universities where a professor already replied positively to your email.</p></div>
+        <div class="card"><h3>Application Checklist Per University</h3><ul><li>Create account on the university's online application portal</li><li>Upload transcripts (sealed or direct registry submission)</li><li>Upload your CV and customised SOP</li><li>Enter referees' contact details (they receive an automated email)</li><li>Upload English test scores</li><li>Pay application fee (always ask for a waiver first)</li><li>Submit before the deadline — never on the last day</li></ul></div>
+        <div class="info-box"><strong>Track every deadline.</strong> Canadian universities typically have January–February deadlines for September intake. Use a spreadsheet. Set phone alarms 30 days and 7 days before each deadline.</div>
+      </div>
+
+      <!-- MODULE 9 -->
+      <div class="section" id="m9">
+        <div class="section-header"><div class="section-badge">🛂</div><div><h2>Module 9: Visa & Pre-Departure</h2><p>What happens after you receive an offer</p></div></div>
+        <div class="warn-box"><strong>Never accept an offer without showing John first.</strong> Check carefully whether it includes full funding (tuition waiver + stipend) or requires self-funding.</div>
+        <div class="card"><h3>Canadian Study Permit</h3><ul><li>Apply on the <strong>IRCC portal</strong> (ircc.canada.ca)</li><li>You will need: acceptance letter, proof of funds (a university funding letter counts), passport, biometrics, medical exam</li><li>Allow <strong>2–4 months</strong> for processing</li><li>Book your VFS Global appointment in Nigeria early</li></ul><div class="resource-list"><a class="resource-pill" href="https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada.html" target="_blank">IRCC Study Permit</a></div></div>
+        <div class="grid-2">
+          <div class="card"><h3>🏠 Accommodation</h3><p>Apply for on-campus housing as soon as you accept your offer — international student housing fills up fast. Check if your university has graduate student housing.</p></div>
+          <div class="card"><h3>✈️ Arrival</h3><p>Book your flight only after your visa is confirmed. Note your university's orientation date and arrive before it. Contact the student union for arrival support.</p></div>
+        </div>
+      </div>
+
+      <!-- TASK LIST -->
+      <div class="section" id="my-tasks">
+        <div class="section-header"><div class="section-badge">✅</div><div><h2>My Task List</h2><p>Check off tasks and add notes — John sees your progress live</p></div></div>
+        <div id="student-tasks"><!-- Rendered by JS --></div>
+      </div>
+
+      <!-- RESOURCES -->
+      <div class="section" id="resources">
+        <div class="section-header"><div class="section-badge">🔗</div><div><h2>Essential Resources</h2><p>All the links you need, in one place</p></div></div>
+        <div class="grid-2">
+          <div class="card"><h3>🔍 University Search</h3><div class="resource-list"><a class="resource-pill" href="https://www.findamasters.com" target="_blank">FindAMasters</a><a class="resource-pill" href="https://www.mastersportal.eu" target="_blank">MastersPortal</a><a class="resource-pill" href="https://www.phdportal.eu" target="_blank">PhDPortal</a></div></div>
+          <div class="card"><h3>📄 Research Papers</h3><div class="resource-list"><a class="resource-pill" href="https://scholar.google.com" target="_blank">Google Scholar</a><a class="resource-pill" href="https://sci-hub.se" target="_blank">Sci-Hub</a><a class="resource-pill" href="https://arxiv.org" target="_blank">arXiv (free)</a></div></div>
+          <div class="card"><h3>💰 Scholarships</h3><div class="resource-list"><a class="resource-pill" href="https://mastercardfdn.org/all/scholars/" target="_blank">Mastercard Fdn</a><a class="resource-pill" href="https://www.daad.de/en/" target="_blank">DAAD Germany</a><a class="resource-pill" href="https://cscuk.fcdo.gov.uk/scholarships/" target="_blank">Commonwealth</a><a class="resource-pill" href="https://scholarshipdb.net" target="_blank">ScholarshipDB</a></div></div>
+          <div class="card"><h3>🇨🇦 Canada Visa</h3><div class="resource-list"><a class="resource-pill" href="https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada.html" target="_blank">IRCC Study Permit</a><a class="resource-pill" href="https://www.educanada.ca" target="_blank">EduCanada</a></div></div>
+          <div class="card"><h3>📘 Nigerian Passport</h3><div class="resource-list"><a class="resource-pill" href="https://passport.immigration.gov.ng" target="_blank">NIS Portal</a></div></div>
+          <div class="card"><h3>🎓 English Tests</h3><div class="resource-list"><a class="resource-pill" href="https://www.ielts.org" target="_blank">Book IELTS</a><a class="resource-pill" href="https://www.ets.org/toefl" target="_blank">Register TOEFL</a><a class="resource-pill" href="https://englishtest.duolingo.com" target="_blank">Duolingo Test</a></div></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /student-screen -->
+
+
+<!-- ======== MENTOR SCREEN (John) ======== -->
+<div id="mentor-screen" style="display:none;">
+
+  <!-- Mentor Sidebar -->
+  <nav id="sidebar" style="position:fixed;">
+    <div id="sidebar-header">
+      <div class="logo">Mentor <span>Dashboard</span></div>
+      <div class="tagline">John · Monitoring Daniel's Progress</div>
+    </div>
+    <div class="sidebar-progress">
+      <label>Daniel's Progress</label>
+      <div class="pct" id="m-pct">0%</div>
+      <div class="sub" id="m-done-count">Loading…</div>
+      <div class="prog-bar-wrap"><div class="prog-bar" id="m-prog-bar"></div></div>
+    </div>
+    <nav>
+      <div class="nav-section">Dashboard</div>
+      <a class="nav-item active" href="#m-top"><span class="nav-icon">📊</span> Overview</a>
+      <a class="nav-item" href="#mentor-content"><span class="nav-icon">✅</span> Task Details</a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="u-name">John</div>
+      <div class="u-role">Mentor</div>
+      <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Mentor Main -->
+  <div id="main">
+    <div class="mentor-hero" id="m-top">
+      <div class="eyebrow">Mentor View · Live from Firebase</div>
+      <h1>Daniel's <em>Progress</em></h1>
+      <p>Real-time view of every task Daniel has completed. Leave feedback on any task below.</p>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="mentor-summary">
+      <div class="m-stat-card">
+        <div class="m-stat-num" id="m-pct-big">0%</div>
+        <div class="m-stat-lbl">Overall Progress</div>
+        <div class="prog-bar-wrap" style="margin-top:10px;"><div class="prog-bar" id="m-prog-bar2"></div></div>
+      </div>
+      <div class="m-stat-card">
+        <div class="m-stat-num" id="m-done-big">0</div>
+        <div class="m-stat-lbl">Tasks Completed</div>
+      </div>
+      <div class="m-stat-card">
+        <div class="m-stat-num" id="m-remain-big">31</div>
+        <div class="m-stat-lbl">Tasks Remaining</div>
+      </div>
+    </div>
+
+    <!-- Per-month mini grid -->
+    <div style="padding:20px 60px 0;">
+      <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px;font-family:'DM Mono',monospace;">Progress by Month</div>
+      <div class="m-month-grid">
+        <div class="m-month-cell"><div class="m-cell-month">Month 1</div><div class="m-cell-stat" id="m-stat-1">0/8</div></div>
+        <div class="m-month-cell"><div class="m-cell-month">Month 2</div><div class="m-cell-stat" id="m-stat-2">0/7</div></div>
+        <div class="m-month-cell"><div class="m-cell-month">Month 3</div><div class="m-cell-stat" id="m-stat-3">0/6</div></div>
+        <div class="m-month-cell"><div class="m-cell-month">Month 4</div><div class="m-cell-stat" id="m-stat-4">0/5</div></div>
+        <div class="m-month-cell"><div class="m-cell-month">Month 5</div><div class="m-cell-stat" id="m-stat-5">0/2</div></div>
+        <div class="m-month-cell"><div class="m-cell-month">Month 6</div><div class="m-cell-stat" id="m-stat-6">0/3</div></div>
+      </div>
+    </div>
+
+    <!-- Task detail list -->
+    <div class="mentor-content" id="mentor-content">
+      <div style="color:var(--muted);font-size:0.9rem;">Loading Daniel's tasks…</div>
+    </div>
+  </div>
+</div><!-- /mentor-screen -->
+
+<button id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<!-- Extra JS for mentor summary big numbers -->
+<script type="module">
+  // Patch updateMentorSummary to also update the big cards
+  const origUpdate = window.__origUpdateMentorSummary;
+  // We hook into the onSnapshot indirectly via a MutationObserver on m-pct
+  const pctEl = document.getElementById('m-pct');
+  if (pctEl) {
+    const obs = new MutationObserver(() => {
+      const pctBig = document.getElementById('m-pct-big');
+      const doneBig = document.getElementById('m-done-big');
+      const remainBig = document.getElementById('m-remain-big');
+      const doneCount = document.getElementById('m-done-count');
+      if (pctBig) pctBig.textContent = pctEl.textContent;
+      const bar2 = document.getElementById('m-prog-bar2');
+      const bar1 = document.getElementById('m-prog-bar');
+      if (bar2 && bar1) bar2.style.width = bar1.style.width;
+      if (doneCount && doneBig && remainBig) {
+        const match = doneCount.textContent.match(/(\d+) of (\d+)/);
+        if (match) {
+          doneBig.textContent = match[1];
+          remainBig.textContent = parseInt(match[2]) - parseInt(match[1]);
+        }
+      }
+    });
+    obs.observe(pctEl, { childList: true, subtree: true, characterData: true });
+  }
+</script>
+
+</body>
+</html>
