@@ -25,15 +25,14 @@
   // ============================================================
   // 🔧 STEP 1: PASTE YOUR FIREBASE CONFIG HERE
   // ============================================================
-const firebaseConfig = {
-
-  apiKey: "AIzaSyBiU-23Ki5Cs369fdfGwzzNIYCrWCMIbko",
-  authDomain: "road-to-abroad-mentorship.firebaseapp.com",
-  projectId: "road-to-abroad-mentorship",
-  storageBucket: "road-to-abroad-mentorship.firebasestorage.app",
-  messagingSenderId: "512665582745",
-  appId: "1:512665582745:web:db508416cd0b7bdd26cc08"
-};
+  const firebaseConfig = {
+    apiKey:            "AIzaSyBiU-23Ki5Cs369fdfGwzzNIYCrWCMIbko",
+    authDomain:        "road-to-abroad-mentorship.firebaseapp.com",
+    projectId:         "road-to-abroad-mentorship",
+    storageBucket:     "road-to-abroad-mentorship.firebasestorage.app",
+    messagingSenderId: "512665582745",
+    appId:             "1:512665582745:web:db508416cd0b7bdd26cc08"
+  };
 
   // ============================================================
   // 🔧 STEP 2: PUT YOUR EMAIL HERE (John's email = mentor view)
@@ -418,11 +417,9 @@ const firebaseConfig = {
     document.getElementById('login-pass').addEventListener('keydown', e => {
       if (e.key === 'Enter') window.doLogin();
     });
-    // Check if still on placeholder config
-    if (firebaseConfig.apiKey: "AIzaSyBiU-23Ki5Cs369fdfGwzzNIYCrWCMIbko") {
-      document.getElementById('setup-banner').style.display = 'block';
-      document.getElementById('login-screen').style.display = 'none';
-    }
+    // Config is set — hide setup banner and show login
+    document.getElementById('setup-banner').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
   });
 
   // Tab switching
