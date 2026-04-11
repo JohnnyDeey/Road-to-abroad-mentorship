@@ -25,19 +25,26 @@
   // ============================================================
   // 🔧 STEP 1: PASTE YOUR FIREBASE CONFIG HERE
   // ============================================================
-  const firebaseConfig = {
-    apiKey:            "PASTE_YOUR_apiKey_HERE",
-    authDomain:        "PASTE_YOUR_authDomain_HERE",
-    projectId:         "PASTE_YOUR_projectId_HERE",
-    storageBucket:     "PASTE_YOUR_storageBucket_HERE",
-    messagingSenderId: "PASTE_YOUR_messagingSenderId_HERE",
-    appId:             "PASTE_YOUR_appId_HERE"
-  };
+const firebaseConfig = {
+
+  apiKey: "AIzaSyBiU-23Ki5Cs369fdfGwzzNIYCrWCMIbko",
+
+  authDomain: "road-to-abroad-mentorship.firebaseapp.com",
+
+  projectId: "road-to-abroad-mentorship",
+
+  storageBucket: "road-to-abroad-mentorship.firebasestorage.app",
+
+  messagingSenderId: "512665582745",
+
+  appId: "1:512665582745:web:db508416cd0b7bdd26cc08"
+
+};
 
   // ============================================================
   // 🔧 STEP 2: PUT YOUR EMAIL HERE (John's email = mentor view)
   // ============================================================
-  const MENTOR_EMAIL = "john@example.com";
+  const MENTOR_EMAIL = "sjohndamilola92@gmail.com";
 
   // ============================================================
   // Firebase initialisation
@@ -418,7 +425,7 @@
       if (e.key === 'Enter') window.doLogin();
     });
     // Check if still on placeholder config
-    if (firebaseConfig.apiKey === "PASTE_YOUR_apiKey_HERE") {
+    if (firebaseConfig.apiKey: "AIzaSyBiU-23Ki5Cs369fdfGwzzNIYCrWCMIbko") {
       document.getElementById('setup-banner').style.display = 'block';
       document.getElementById('login-screen').style.display = 'none';
     }
