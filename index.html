@@ -14,9 +14,24 @@
 <script>
   if('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const newSW = reg.installing;
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              // New version is ready — show the update banner
+              document.getElementById('update-banner').style.display = 'flex';
+              window._newSW = newSW;
+            }
+          });
+        });
+      }).catch(()=>{});
     });
   }
+  window.doUpdate = function() {
+    if(window._newSW) window._newSW.postMessage('SKIP_WAITING');
+    window.location.reload();
+  };
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet"/>
 <!-- EmailJS — sends emails directly from the browser, no backend needed -->
@@ -451,6 +466,21 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
 </head>
 <body>
 
+<!-- ════════════ UPDATE BANNER ════════════ -->
+<div id="update-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0d1b2a;color:#fff;padding:12px 20px;align-items:center;justify-content:space-between;gap:12px;z-index:9999;box-shadow:0 -4px 20px rgba(0,0,0,0.3);">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="font-size:1.2rem;">🚀</span>
+    <div>
+      <div style="font-weight:600;font-size:0.9rem;">New version available</div>
+      <div style="font-size:0.78rem;color:rgba(255,255,255,0.55);">Tap Update to get the latest features</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0;">
+    <button onclick="doUpdate()" style="padding:8px 18px;background:#e8a020;color:#0d1b2a;border:none;border-radius:7px;font-weight:700;font-size:0.85rem;cursor:pointer;">Update now</button>
+    <button onclick="document.getElementById('update-banner').style.display='none'" style="padding:8px 12px;background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:7px;font-size:0.85rem;cursor:pointer;">Later</button>
+  </div>
+</div>
+
 <!-- ════════════ LOADING ════════════ -->
 <div id="screen-loading">
   <div class="plane">✈</div>
@@ -474,7 +504,11 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
       <label class="fl">Email Address</label>
       <input class="fi" id="si-em" type="email" placeholder="Your email"/>
       <label class="fl">Password</label>
-      <input class="fi" id="si-pw" type="password" placeholder="Your password"/>
+      <div style="position:relative;">
+        <input class="fi" id="si-pw" type="password" placeholder="Your password" style="margin-bottom:0;padding-right:44px;"/>
+        <button type="button" onclick="togglePw('si-pw',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;line-height:1;" title="Show/hide password">︶</button>
+      </div>
+      <div style="margin-bottom:13px;"></div>
       <button class="fbtn" id="si-btn" onclick="doSignIn()">Sign In</button>
       <div class="flink" onclick="doReset()">Forgot password? Send reset email</div>
       <div class="ferr" id="si-err"></div>
@@ -487,7 +521,11 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
       <label class="fl">Email Address</label>
       <input class="fi" id="su-em" type="email" placeholder="Your email"/>
       <label class="fl">Password</label>
-      <input class="fi" id="su-pw" type="password" placeholder="At least 6 characters"/>
+      <div style="position:relative;">
+        <input class="fi" id="su-pw" type="password" placeholder="At least 6 characters" style="margin-bottom:0;padding-right:44px;"/>
+        <button type="button" onclick="togglePw('su-pw',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;line-height:1;" title="Show/hide password">︶</button>
+      </div>
+      <div style="margin-bottom:13px;"></div>
       <button class="fbtn" id="su-btn" onclick="doSignUp()">Sign Up</button>
       <div class="ferr" id="su-err"></div>
     </div>
@@ -1549,7 +1587,7 @@ function loadSInbox(){
     const badge=document.getElementById('s-msg-badge');
     const cnt=document.getElementById('s-inbox-count');
     if(badge){badge.textContent=unread;badge.style.display=unread>0?'inline':'none';}
-    if(cnt) cnt.textContent=unread>0?` (${unread})`:'';
+    if(cnt) cnt.textContent=unread>0?` (${unread})`:''; setAppBadge(unread);
     list.innerHTML=msgs.length?msgs.map(m=>msgRow(m,false)).join(''):'<div class="msg-empty">No messages yet. Your mentor will reach out here.</div>';
   });
 }
@@ -1610,14 +1648,16 @@ function loadMInbox(){
   if(!list)return;
   list.innerHTML='<div class="msg-empty">Loading…</div>';
   unsubMMsgs=onSnapshot(query(collection(db,'messages'),where('recipientUid','==',MENTOR_ID)),snap=>{
-    const msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));
+    let msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));
+    if(stuUID) msgs=msgs.filter(m=>m.senderUid===stuUID); // filter by selected student
     msgs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
     const unread=msgs.filter(m=>!m.read).length;
     const badge=document.getElementById('m-msg-badge');
     const cnt=document.getElementById('m-inbox-count');
     if(badge){badge.textContent=unread;badge.style.display=unread>0?'inline-block':'none';}
-    if(cnt)cnt.textContent=unread>0?` (${unread})`:'';
-    list.innerHTML=msgs.length?msgs.map(m=>msgRow(m,false)).join(''):'<div class="msg-empty">No messages from students yet.</div>';
+    if(cnt)cnt.textContent=unread>0?` (${unread})`:''; setAppBadge(unread);
+    const stuName = stuUID && stuEmailMap[stuUID]?.name ? stuEmailMap[stuUID].name : 'any student';
+    list.innerHTML=msgs.length?msgs.map(m=>msgRow(m,false)).join(''):`<div class="msg-empty">No messages from ${stuName} yet.</div>`;
   });
 }
 function loadMSent(){
@@ -1626,9 +1666,11 @@ function loadMSent(){
   if(!list)return;
   list.innerHTML='<div class="msg-empty">Loading…</div>';
   unsubMMsgs=onSnapshot(query(collection(db,'messages'),where('senderUid','==',MENTOR_ID)),snap=>{
-    const msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));
+    let msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));
+    if(stuUID) msgs=msgs.filter(m=>m.recipientUid===stuUID); // filter by selected student
     msgs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
-    list.innerHTML=msgs.length?msgs.map(m=>msgRow(m,true)).join(''):'<div class="msg-empty">No sent messages yet.</div>';
+    const stuName = stuUID && stuEmailMap[stuUID]?.name ? stuEmailMap[stuUID].name : 'any student';
+    list.innerHTML=msgs.length?msgs.map(m=>msgRow(m,true)).join(''):`<div class="msg-empty">No sent messages to ${stuName} yet.</div>`;
   });
 }
 function showMCompose(){
@@ -1636,6 +1678,7 @@ function showMCompose(){
   const toolbar=document.getElementById('m-msg-toolbar');
   if(toolbar)toolbar.style.display='none';
   const opts=Object.entries(stuEmailMap).map(([uid,s])=>`<option value="${uid}|||${s.name}">${s.name} (${s.email})</option>`).join('');
+  const _preSelected = stuUID && stuEmailMap[stuUID] ? stuUID+'|||'+stuEmailMap[stuUID].name : '';
   document.getElementById('m-msg-list').innerHTML=`<div class="msg-compose-wrap">
     <div class="msg-back" onclick="mMsgTab('inbox')">← Back</div>
     <label class="msg-flabel">To</label>
@@ -1659,6 +1702,7 @@ function showMCompose(){
       </div>
     </div>
   </div>`;
+  if(_preSelected){ const sel=document.getElementById('mc-to'); if(sel) sel.value=_preSelected; }
 }
 window.applyTpl=function(type){
   const t=TEMPLATES[type];if(!t)return;
@@ -1693,6 +1737,22 @@ function initMentorMsgBadge(){
     if(b){b.textContent=u;b.style.display=u>0?'inline-block':'none';}
   });
 }
+// ── PASSWORD VISIBILITY TOGGLE ───────────────────────
+window.togglePw = function(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.type === 'password') { input.type='text'; btn.textContent='🙈'; }
+  else { input.type='password'; btn.textContent='👁'; }
+};
+
+// ── APP BADGE (unread count on PWA icon) ─────────────
+function setAppBadge(count) {
+  if ('setAppBadge' in navigator) {
+    if(count>0) navigator.setAppBadge(count).catch(()=>{});
+    else navigator.clearAppBadge().catch(()=>{});
+  }
+}
+
 function g(id){return document.getElementById(id)?.value?.trim()||'';}
 function tx(id,v){const e=document.getElementById(id);if(e) e.textContent=v;}
 function bw(id,p){const e=document.getElementById(id);if(e) e.style.width=p+'%';}
