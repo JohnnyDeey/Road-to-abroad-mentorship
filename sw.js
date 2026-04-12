@@ -1,11 +1,8 @@
-const CACHE = 'path-abroad-v2'; // bump this version to trigger an update notification
+const CACHE = 'path-abroad-v3'; // bumped to v3 — triggers update banner for all users
 const ASSETS = ['/', '/index.html'];
-
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-  // Don't skipWaiting — wait for user to confirm update
 });
-
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -14,14 +11,11 @@ self.addEventListener('activate', e => {
   );
   self.clients.claim();
 });
-
 self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match('/index.html')))
   );
 });
-
-// Tell all open pages that a new version is waiting
 self.addEventListener('message', e => {
   if (e.data === 'SKIP_WAITING') self.skipWaiting();
 });
