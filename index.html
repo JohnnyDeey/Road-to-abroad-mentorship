@@ -19,7 +19,6 @@
           const newSW = reg.installing;
           newSW.addEventListener('statechange', () => {
             if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-              // New version is ready — show the update banner
               document.getElementById('update-banner').style.display = 'flex';
               window._newSW = newSW;
             }
@@ -34,39 +33,8 @@
   };
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet"/>
-<!-- EmailJS — sends emails directly from the browser, no backend needed -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
-/*
-  ═══════════════════════════════════════════════════════
-  EMAIL SETUP — DO THIS ONCE, TAKES 5 MINUTES
-  ═══════════════════════════════════════════════════════
-  1. Go to https://www.emailjs.com and sign up (free)
-  2. Add Email Service → connect your Gmail → copy the Service ID
-  3. Create Email Templates (2 templates needed):
-
-  TEMPLATE 1 — "new_student" (sent to mentor when someone signs up)
-    Subject: New student waiting for approval — {{student_name}}
-    Body:
-      Hi,
-      A new student just signed up on Path Abroad and is waiting for your approval.
-      Name: {{student_name}}
-      Email: {{student_email}}
-      Log in at {{app_url}} to approve or decline them.
-
-  TEMPLATE 2 — "student_approved" (sent to student when mentor approves)
-    Subject: Your Path Abroad account has been approved!
-    Body:
-      Hi {{student_name}},
-      Great news! Your mentor has approved your Path Abroad account.
-      You can now log in and start your journey: {{app_url}}
-      Let's get to work!
-
-  4. Go to Account → API Keys → copy your Public Key
-  5. Fill in the 4 values below:
-  ═══════════════════════════════════════════════════════
-*/
-  // ── PASTE YOUR EMAILJS VALUES HERE ──────────────────
   const EMAILJS_PUBLIC_KEY  = "3RTSTs0pEsxyidTg-";
   const EMAILJS_SERVICE_ID  = "service_0xz1jj6";
   const EMAILJS_TMPL_NEW    = "template_9ubbwzc";
@@ -135,15 +103,12 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
 }
 
 /* ─── SCREEN MANAGER ───────────────────────────────── */
-/* Every screen is hidden by default.
-   JavaScript calls showOnly() to reveal exactly one. */
 #screen-loading,
 #screen-login,
 #screen-pending,
 #screen-student,
 #screen-mentor { display:none; }
 
-/* Loading is the exception — visible until Firebase responds */
 #screen-loading {
   display:flex;
   flex-direction:column;
@@ -394,32 +359,6 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
 #scroll-top.on{display:flex;}
 #scroll-down.on{display:flex;}
 
-/* ─── MOBILE ─────────────────────────────────────────── */
-@media(max-width:800px){
-  #mob-bar{display:flex;}
-  /* Sidebar hides off-screen on mobile */
-  .sb{transform:translateX(-100%);}
-  .sb.open{transform:translateX(0);}
-  /* Overlay darkens content when sidebar is open */
-  #sb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.52);z-index:350;cursor:pointer;}
-  #sb-ov.on{display:block;}
-  .main{margin-left:0 !important;}
-  .hero{padding:66px 16px 26px;}
-  .hero h1{font-size:1.65rem;}
-  .ac{padding:16px 14px 72px;}
-  .mhero{padding:66px 16px 22px;}
-  .msum{grid-template-columns:1fr 1fr;padding:13px 14px;gap:9px;}
-  .mcnt{padding:14px 14px 72px;}
-  #appr-box{margin:0 14px;}
-  #stu-sel{padding:0 14px 13px;}
-  .mgrid-wrap{padding:13px 14px 0 !important;}
-  .mgrid{grid-template-columns:repeat(3,1fr);}
-  .g2{grid-template-columns:1fr;}
-  .lbox{padding:28px 20px;border-radius:16px;}
-  .tabs{flex-wrap:wrap;}
-  .apr{flex-direction:column;align-items:flex-start;}
-}
-
 /* ─── MESSAGING ──────────────────────────────────── */
 .msg-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
 .msg-toolbar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);background:#fafaf8;flex-wrap:wrap;}
@@ -456,7 +395,77 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
 .msg-send-btn{padding:10px 22px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;cursor:pointer;transition:background .2s;}
 .msg-send-btn:hover{background:var(--gold);color:var(--navy);}
 
-/* On desktop, sidebar always visible */
+/* ─── IN-APP TOAST NOTIFICATION ──────────────────────── */
+#notif-toast {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  max-width: 340px;
+  background: var(--navy);
+  color: #fff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+  z-index: 9998;
+  display: none;
+  animation: slideIn .3s ease;
+  border-left: 4px solid var(--gold);
+}
+#notif-toast.on { display: flex; gap: 12px; align-items: flex-start; }
+.nt-icon { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+.nt-body { flex: 1; }
+.nt-title { font-weight: 700; font-size: 0.86rem; margin-bottom: 3px; }
+.nt-body-text { font-size: 0.78rem; color: rgba(255,255,255,0.7); line-height: 1.5; }
+.nt-close { background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 1rem; padding: 0; flex-shrink: 0; }
+.nt-close:hover { color: #fff; }
+
+/* ─── NOTIFICATION PERMISSION BANNER ─────────────────── */
+#notif-banner {
+  background: #fffbf0;
+  border-bottom: 1px solid #f5dfa0;
+  padding: 10px 20px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.84rem;
+  color: #444;
+  position: sticky;
+  top: 0;
+  z-index: 250;
+}
+#notif-banner.on { display: flex; }
+#notif-banner strong { color: var(--navy); }
+.nb-yes { padding: 6px 14px; background: var(--navy); color: #fff; border: none; border-radius: 7px; font-family: 'DM Sans',sans-serif; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: background .2s; white-space: nowrap; }
+.nb-yes:hover { background: var(--gold); color: var(--navy); }
+.nb-no { background: none; border: none; color: var(--muted); cursor: pointer; font-family: 'DM Sans',sans-serif; font-size: 0.8rem; margin-left: auto; }
+
+@keyframes slideIn { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:none; } }
+
+/* ─── MOBILE ─────────────────────────────────────────── */
+@media(max-width:800px){
+  #mob-bar{display:flex;}
+  .sb{transform:translateX(-100%);}
+  .sb.open{transform:translateX(0);}
+  #sb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.52);z-index:350;cursor:pointer;}
+  #sb-ov.on{display:block;}
+  .main{margin-left:0 !important;}
+  .hero{padding:66px 16px 26px;}
+  .hero h1{font-size:1.65rem;}
+  .ac{padding:16px 14px 72px;}
+  .mhero{padding:66px 16px 22px;}
+  .msum{grid-template-columns:1fr 1fr;padding:13px 14px;gap:9px;}
+  .mcnt{padding:14px 14px 72px;}
+  #appr-box{margin:0 14px;}
+  #stu-sel{padding:0 14px 13px;}
+  .mgrid-wrap{padding:13px 14px 0 !important;}
+  .mgrid{grid-template-columns:repeat(3,1fr);}
+  .g2{grid-template-columns:1fr;}
+  .lbox{padding:28px 20px;border-radius:16px;}
+  .tabs{flex-wrap:wrap;}
+  .apr{flex-direction:column;align-items:flex-start;}
+  #notif-toast { top: 60px; right: 10px; left: 10px; max-width: none; }
+}
+
 @media(min-width:801px){
   .sb{transform:none !important;}
   #mob-bar{display:none !important;}
@@ -465,6 +474,24 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
 </style>
 </head>
 <body>
+
+<!-- ════════════ NOTIFICATION PERMISSION BANNER ════════════ -->
+<div id="notif-banner">
+  <span>🔔</span>
+  <div><strong>Enable notifications</strong> — get daily reminders and instant alerts when your mentor sends feedback.</div>
+  <button class="nb-yes" onclick="requestPushPermission()">Enable</button>
+  <button class="nb-no"  onclick="dismissNotifBanner()">Not now</button>
+</div>
+
+<!-- ════════════ IN-APP TOAST ════════════ -->
+<div id="notif-toast">
+  <div class="nt-icon">📩</div>
+  <div class="nt-body">
+    <div class="nt-title" id="nt-title">New notification</div>
+    <div class="nt-body-text" id="nt-body">You have a new update.</div>
+  </div>
+  <button class="nt-close" onclick="hideToast()">✕</button>
+</div>
 
 <!-- ════════════ UPDATE BANNER ════════════ -->
 <div id="update-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0d1b2a;color:#fff;padding:12px 20px;align-items:center;justify-content:space-between;gap:12px;z-index:9999;box-shadow:0 -4px 20px rgba(0,0,0,0.3);">
@@ -499,7 +526,6 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
       <button class="ltab on" id="tab-si" onclick="showForm('si')">Sign In</button>
       <button class="ltab"    id="tab-su" onclick="showForm('su')">Sign Up</button>
     </div>
-    <!-- Sign In -->
     <div class="lform on" id="form-si">
       <label class="fl">Email Address</label>
       <input class="fi" id="si-em" type="email" placeholder="Your email"/>
@@ -513,7 +539,6 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
       <div class="flink" onclick="doReset()">Forgot password? Send reset email</div>
       <div class="ferr" id="si-err"></div>
     </div>
-    <!-- Sign Up -->
     <div class="lform" id="form-su">
       <div class="fnote">Your account will be reviewed and approved by your mentor before you can access the guide.</div>
       <label class="fl">Full Name</label>
@@ -752,16 +777,15 @@ Sincerely,
         </div>
       </div>
 
-
       <div class="sec" id="messages">
         <div class="sh"><div class="sb2">✉️</div><div><h2>Messages</h2><p>Your conversation with your mentor</p></div></div>
         <div class="msg-wrap">
           <div id="s-msg-toolbar" class="msg-toolbar">
             <div class="msg-tabs">
-              <button class="msg-tab on" onclick="sMsgTab('inbox')">📥 Inbox <span id="s-inbox-count" style="font-weight:700;"></span></button>
-              <button class="msg-tab" onclick="sMsgTab('sent')">📤 Sent</button>
+              <button class="msg-tab on" onclick="sMsgTab('inbox')">📩 Inbox <span id="s-inbox-count" style="font-weight:700;"></span></button>
+              <button class="msg-tab" onclick="sMsgTab('sent')">➤ Sent</button>
             </div>
-            <button class="msg-compose-btn" onclick="sMsgTab('compose')">✏️ New Message</button>
+            <button class="msg-compose-btn" onclick="sMsgTab('compose')">📝 New Message</button>
           </div>
           <div id="s-msg-list"><div class="msg-empty">Select Messages in the sidebar to load your inbox.</div></div>
         </div>
@@ -829,14 +853,13 @@ Sincerely,
     </div>
     <div class="mcnt" id="m-tasks"></div>
 
-    <!-- MESSAGES PANEL -->
     <div class="mcnt" id="m-compose" style="padding-top:0;">
       <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--navy);padding:20px 0 16px;border-bottom:2px solid var(--border);margin-bottom:20px;">✉️ Messages</div>
       <div class="msg-wrap">
         <div id="m-msg-toolbar" class="msg-toolbar">
           <div class="msg-tabs">
-            <button class="msg-tab on" onclick="mMsgTab('inbox')">📥 Inbox <span id="m-inbox-count" style="font-weight:700;"></span></button>
-            <button class="msg-tab" onclick="mMsgTab('sent')">➤ Sent</button>
+            <button class="msg-tab on" onclick="mMsgTab('inbox')">📩 Inbox <span id="m-inbox-count" style="font-weight:700;"></span></button>
+            <button class="msg-tab" onclick="mMsgTab('sent')">╰┈➤ Sent</button>
           </div>
           <button class="msg-compose-btn" onclick="mMsgTab('compose')">📝 New Message</button>
         </div>
@@ -859,8 +882,10 @@ import { getFirestore, doc, setDoc, getDoc, onSnapshot,
          collection, getDocs, serverTimestamp, query, where, deleteDoc,
          addDoc, updateDoc, orderBy }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getMessaging, getToken, onMessage }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
-// ── APP CONFIG — edit these anytime ─────────────────
+// ── APP CONFIG ───────────────────────────────────────
 const CFG = {
   apiKey:            "AIzaSyBiU-23Ki5Cs369fdfGwzzNIYCrWCMIbko",
   authDomain:        "road-to-abroad-mentorship.firebaseapp.com",
@@ -869,11 +894,83 @@ const CFG = {
   messagingSenderId: "512665582745",
   appId:             "1:512665582745:web:db508416cd0b7bdd26cc08"
 };
-const MENTOR = "sjohndamilola92@gmail.com";
+const MENTOR   = "sjohndamilola92@gmail.com";
+const VAPID_KEY = "BEptvHyXIRxXYuzcbqkpgavcPcdVAFPI8jIWp-uPXCFayjjPe4WHvjs9wbNykdFwvORalwsqbsp29TUXN6yxaII";
 
-const app  = initializeApp(CFG);
-const auth = getAuth(app);
-const db   = getFirestore(app);
+const app      = initializeApp(CFG);
+const auth     = getAuth(app);
+const db       = getFirestore(app);
+const messaging = getMessaging(app);
+
+// ── PUSH NOTIFICATIONS ───────────────────────────────
+async function initPush(uid) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    await registerFCMToken(uid);
+    listenForeground();
+    return;
+  }
+  if (Notification.permission === 'denied') return;
+  // Show friendly banner instead of a cold browser prompt
+  const banner = document.getElementById('notif-banner');
+  if (banner && localStorage.getItem('notif-dismissed') !== '1') {
+    banner.classList.add('on');
+  }
+}
+
+window.requestPushPermission = async () => {
+  dismissNotifBanner();
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      await registerFCMToken(me?.uid);
+      listenForeground();
+      showToast('✅ Notifications enabled!', 'You\'ll now get daily reminders and instant mentor alerts.', 4000);
+    }
+  } catch (e) {
+    console.warn('Push permission error:', e);
+  }
+};
+
+window.dismissNotifBanner = () => {
+  const banner = document.getElementById('notif-banner');
+  if (banner) banner.classList.remove('on');
+  localStorage.setItem('notif-dismissed', '1');
+};
+
+async function registerFCMToken(uid) {
+  if (!uid) return;
+  try {
+    const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+    if (token) {
+      await setDoc(doc(db, 'users', uid), { fcmToken: token }, { merge: true });
+      console.log('✅ FCM token saved');
+    }
+  } catch (e) {
+    console.warn('FCM token error:', e.message);
+  }
+}
+
+function listenForeground() {
+  onMessage(messaging, (payload) => {
+    const title = payload.notification?.title || 'Path Abroad';
+    const body  = payload.notification?.body  || '';
+    showToast(title, body, 6000);
+  });
+}
+
+function showToast(title, body, duration = 5000) {
+  document.getElementById('nt-title').textContent = title;
+  document.getElementById('nt-body').textContent  = body;
+  const toast = document.getElementById('notif-toast');
+  toast.classList.add('on');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(hideToast, duration);
+}
+
+window.hideToast = () => {
+  document.getElementById('notif-toast').classList.remove('on');
+};
 
 // ── TASKS ────────────────────────────────────────────
 const TASKS = [
@@ -914,10 +1011,9 @@ const ML = {1:'Month 1 — Research & Profile',2:'Month 2 — Outreach & Languag
 // ── STATE ────────────────────────────────────────────
 let me = null, isMentor = false, stuUID = null;
 let unsubP = null, unsubA = null;
-let isSigningUp = false; // prevents onAuthStateChanged from interfering during sign up
+let isSigningUp = false;
 
 // ── SCREEN MANAGER ───────────────────────────────────
-// Only one screen visible at a time
 function show(id) {
   ['screen-loading','screen-login','screen-pending','screen-student','screen-mentor'].forEach(s => {
     const el = document.getElementById(s);
@@ -926,7 +1022,6 @@ function show(id) {
   });
   const target = document.getElementById(id);
   if (!target) return;
-  // Login and pending need flex to centre content
   if (id === 'screen-login' || id === 'screen-pending') {
     target.style.display = 'flex';
   } else {
@@ -936,24 +1031,23 @@ function show(id) {
 
 // ── AUTH ─────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
-  if (isSigningUp) return; // doSignUp handles routing during sign up
+  if (isSigningUp) return;
   if (!user) { show('screen-login'); return; }
   me = user;
   isMentor = user.email.toLowerCase() === MENTOR.toLowerCase();
   if (isMentor) {
     show('screen-mentor');
-    // Show mentor's own name from their user doc if available
     const msnap = await getDoc(doc(db,'users',user.uid));
     if(msnap.exists() && msnap.data().name) {
       const mn = document.getElementById('mentor-name');
       if(mn) mn.textContent = msnap.data().name;
     }
     loadMentor(); initMentorMsgBadge();
+    initPush(user.uid);
     return;
   }
   const snap = await getDoc(doc(db,'users',user.uid));
 
-  // Account was deleted by mentor
   if (snap.exists() && snap.data().status === 'deleted') {
     await signOut(auth);
     resetLoginForm();
@@ -968,6 +1062,7 @@ onAuthStateChanged(auth, async user => {
     buildTasks();
     listenStudent(user.uid);
     initStudentMsgBadge(user.uid);
+    initPush(user.uid);
   } else {
     if (!snap.exists()) {
       await setDoc(doc(db,'users',user.uid),{email:user.email,name:user.email,role:'student',status:'pending',createdAt:serverTimestamp()});
@@ -987,6 +1082,8 @@ onAuthStateChanged(auth, async user => {
           show('screen-student');
           buildTasks();
           listenStudent(user.uid);
+          initStudentMsgBadge(user.uid);
+          initPush(user.uid);
         });
       }
     });
@@ -999,7 +1096,6 @@ window.doSignIn = async () => {
   err('si-err',''); dis('si-btn',true,'Signing in…');
   try {
     await signInWithEmailAndPassword(auth,em,pw);
-    // onAuthStateChanged handles routing
   } catch(e){
     err('si-err',aerr(e.code));
     dis('si-btn',false,'Sign In');
@@ -1016,7 +1112,6 @@ window.doSignUp = async () => {
   isSigningUp = true;
 
   try {
-    // Try creating a brand new account first
     const c = await createUserWithEmailAndPassword(auth,em,pw);
     await setDoc(doc(db,'users',c.user.uid),{
       email:em, name:nm, role:'student', status:'pending', createdAt:serverTimestamp()
@@ -1027,15 +1122,11 @@ window.doSignUp = async () => {
     routeToPending(c.user.uid, em, nm);
 
   } catch(e) {
-
     if (e.code === 'auth/email-already-in-use') {
-      // Email taken — try signing in to check if it's a deleted account
       try {
         const c2 = await signInWithEmailAndPassword(auth, em, pw);
         const snap = await getDoc(doc(db,'users',c2.user.uid));
-
         if (!snap.exists() || snap.data().status === 'deleted') {
-          // Deleted or orphaned account — allow re-registration, progress preserved
           await setDoc(doc(db,'users',c2.user.uid),{
             email:em, name:nm, role:'student', status:'pending', createdAt:serverTimestamp()
           });
@@ -1043,15 +1134,12 @@ window.doSignUp = async () => {
           me = c2.user;
           try { sendNewStudentEmail(nm, em); } catch(x){}
           routeToPending(c2.user.uid, em, nm);
-
         } else {
-          // Account is active — tell them to sign in
           isSigningUp = false;
           await signOut(auth);
           err('su-err','This email is already registered. Please use the Sign In tab.');
           dis('su-btn',false,'Sign Up');
         }
-
       } catch(e2) {
         isSigningUp = false;
         if (e2.code === 'auth/wrong-password' || e2.code === 'auth/invalid-credential') {
@@ -1061,7 +1149,6 @@ window.doSignUp = async () => {
         }
         dis('su-btn',false,'Sign Up');
       }
-
     } else {
       isSigningUp = false;
       err('su-err', aerr(e.code));
@@ -1070,7 +1157,6 @@ window.doSignUp = async () => {
   }
 };
 
-// Routes a newly signed-up student to the pending screen and listens for approval
 function routeToPending(uid, email, name) {
   document.getElementById('pend-em').textContent = email;
   show('screen-pending');
@@ -1084,14 +1170,14 @@ function routeToPending(uid, email, name) {
       if(unsubP){unsubP();unsubP=null;}
       showApprovalCelebration(() => {
         document.getElementById('s-name').textContent = s.data().name || email;
-        show('screen-student'); buildTasks(); listenStudent(uid); initStudentMsgBadge(uid); initStudentMsgBadge(uid);
+        show('screen-student'); buildTasks(); listenStudent(uid);
+        initStudentMsgBadge(uid); initPush(uid);
       });
     }
   });
 }
 
 function showApprovalCelebration(onDone) {
-  // Flip the badge to green
   const bar   = document.getElementById('pend-bar');
   const txt   = document.getElementById('pend-bar-text');
   const icon  = document.getElementById('pend-icon');
@@ -1102,7 +1188,6 @@ function showApprovalCelebration(onDone) {
   if (icon)  { icon.textContent='🎉'; }
   if (title) { title.textContent='You\'re Approved!'; title.style.color='#27ae60'; }
   if (sub)   { sub.textContent='Taking you to your guide in a moment…'; }
-  // Route after 2.5 seconds so they can see and feel the moment
   setTimeout(onDone, 2500);
 }
 
@@ -1131,7 +1216,6 @@ window.doSignOut = async () => {
   show('screen-login');
 };
 
-// showForm MUST be on window — called directly from HTML onclick attributes
 window.showForm = function(id) {
   ['si','su'].forEach(f => {
     const form = document.getElementById('form-'+f);
@@ -1273,10 +1357,8 @@ function renderSbStudents(stus) {
 
 window.pickStu = (uid,name)=>{
   stuUID=uid;
-  // Highlight in sidebar
   document.querySelectorAll('[id^="sbstu-"]').forEach(t=>t.classList.remove('on'));
   const sbItem=document.getElementById('sbstu-'+uid); if(sbItem) sbItem.classList.add('on');
-  // Legacy tab highlight
   document.querySelectorAll('.stab').forEach(t=>t.classList.remove('on'));
   const tab=document.getElementById('stab-'+uid); if(tab) tab.classList.add('on');
   document.getElementById('m-title').innerHTML=name+"'s <em>Progress</em>";
@@ -1286,7 +1368,6 @@ window.pickStu = (uid,name)=>{
 
 window.approveStu = async(uid,name)=>{
   await setDoc(doc(db,'users',uid),{status:'approved'},{merge:true});
-  // Get student email and send approval notification
   const snap2 = await getDoc(doc(db,'users',uid));
   if(snap2.exists()) sendApprovalEmail(snap2.data().name, snap2.data().email);
   const snap=await getDocs(collection(db,'users'));
@@ -1297,15 +1378,12 @@ window.approveStu = async(uid,name)=>{
 };
 window.declineStu = async uid => {
   if(!confirm('Decline this student? They will be silently redirected to sign up again.')) return;
-  // Delete their Firestore doc entirely — they can sign up freely again
   await deleteDoc(doc(db,'users',uid));
 };
 
 window.deleteStu = async (uid, name) => {
   if(!confirm(`Remove ${name} from the platform?\n\nThey will be blocked from signing in. If they sign up again with the same email, their progress will be restored.`)) return;
-  // Mark as deleted — preserve all progress data so it can be recalled on re-registration
   await setDoc(doc(db,'users',uid),{status:'deleted'},{merge:true});
-  // Refresh student list
   const snap = await getDocs(collection(db,'users'));
   const stus = [];
   snap.forEach(d=>{if(d.data().role==='student'&&d.data().status==='approved') stus.push({uid:d.id,...d.data()});});
@@ -1387,21 +1465,18 @@ window.sfb = async id=>{
   if(b){b.textContent='Sent ✓';setTimeout(()=>b.textContent='Send',2000);}
 };
 
-// Hidden 5-tap escape on the pending screen (for mentor testing)
 let pendingTapCount = 0;
 let pendingTapTimer = null;
 window.pendingTap = function() {
   pendingTapCount++;
   const hint = document.getElementById('pend-tap-hint');
   const remaining = 5 - pendingTapCount;
-  // Reset counter after 3 seconds of inactivity
   clearTimeout(pendingTapTimer);
   pendingTapTimer = setTimeout(() => {
     pendingTapCount = 0;
     if (hint) hint.style.color = 'transparent';
   }, 3000);
   if (pendingTapCount >= 2 && pendingTapCount < 5) {
-    // Show a subtle hint as they get closer
     if (hint) { hint.style.color = '#ddd'; hint.textContent = remaining + ' more…'; }
   }
   if (pendingTapCount >= 5) {
@@ -1411,10 +1486,10 @@ window.pendingTap = function() {
     doSignOut();
   }
 };
-let stuEmailMap = {}; // uid → {name, email}
+
+let stuEmailMap = {};
 
 function populateMsgDropdown(stus) {
-  // Always fill stuEmailMap first — needed for compose dropdown
   stus.forEach(s => { stuEmailMap[s.uid] = {name: s.name, email: s.email}; });
   const sel = document.getElementById('msg-to');
   if (!sel) return;
@@ -1449,16 +1524,12 @@ window.sendMentorMsg = async () => {
   const subject = document.getElementById('msg-subject').value.trim();
   const body = document.getElementById('msg-body').value.trim();
   const statusEl = document.getElementById('msg-status');
-
   if (!uid) { statusEl.textContent = '⚠️ Please select a student.'; statusEl.style.color='#e74c3c'; return; }
   if (!subject) { statusEl.textContent = '⚠️ Please enter a subject.'; statusEl.style.color='#e74c3c'; return; }
   if (!body) { statusEl.textContent = '⚠️ Please write a message.'; statusEl.style.color='#e74c3c'; return; }
-
   const stu = stuEmailMap[uid];
   if (!stu) { statusEl.textContent = '⚠️ Student not found.'; return; }
-
   statusEl.textContent = 'Sending…'; statusEl.style.color = 'var(--muted)';
-
   try {
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TMPL_NEW, {
       to_email:      stu.email,
@@ -1476,7 +1547,6 @@ window.sendMentorMsg = async () => {
     });
     statusEl.textContent = '✓ Message sent to ' + stu.name + '!';
     statusEl.style.color = '#27ae60';
-    // Clear the form
     document.getElementById('msg-subject').value = '';
     document.getElementById('msg-body').value = '';
     setTimeout(() => { statusEl.textContent = ''; }, 4000);
@@ -1485,6 +1555,7 @@ window.sendMentorMsg = async () => {
     statusEl.style.color = '#e74c3c';
   }
 };
+
 // ── IN-APP MESSAGING ──────────────────────────────────
 const MENTOR_ID = 'MENTOR';
 let unsubSMsgs = null, unsubMMsgs = null;
@@ -1649,7 +1720,7 @@ function loadMInbox(){
   list.innerHTML='<div class="msg-empty">Loading…</div>';
   unsubMMsgs=onSnapshot(query(collection(db,'messages'),where('recipientUid','==',MENTOR_ID)),snap=>{
     let msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));
-    if(stuUID) msgs=msgs.filter(m=>m.senderUid===stuUID); // filter by selected student
+    if(stuUID) msgs=msgs.filter(m=>m.senderUid===stuUID);
     msgs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
     const unread=msgs.filter(m=>!m.read).length;
     const badge=document.getElementById('m-msg-badge');
@@ -1667,7 +1738,7 @@ function loadMSent(){
   list.innerHTML='<div class="msg-empty">Loading…</div>';
   unsubMMsgs=onSnapshot(query(collection(db,'messages'),where('senderUid','==',MENTOR_ID)),snap=>{
     let msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));
-    if(stuUID) msgs=msgs.filter(m=>m.recipientUid===stuUID); // filter by selected student
+    if(stuUID) msgs=msgs.filter(m=>m.recipientUid===stuUID);
     msgs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
     const stuName = stuUID && stuEmailMap[stuUID]?.name ? stuEmailMap[stuUID].name : 'any student';
     list.innerHTML=msgs.length?msgs.map(m=>msgRow(m,true)).join(''):`<div class="msg-empty">No sent messages to ${stuName} yet.</div>`;
@@ -1737,15 +1808,16 @@ function initMentorMsgBadge(){
     if(b){b.textContent=u;b.style.display=u>0?'inline-block':'none';}
   });
 }
+
 // ── PASSWORD VISIBILITY TOGGLE ───────────────────────
 window.togglePw = function(inputId, btn) {
   const input = document.getElementById(inputId);
   if (!input) return;
-  if (input.type === 'password') { input.type='text'; btn.textContent='🙈'; }
-  else { input.type='password'; btn.textContent='👁'; }
+  if (input.type === 'password') { input.type='text'; btn.textContent='◡'; }
+  else { input.type='password'; btn.textContent='◡'; }
 };
 
-// ── APP BADGE (unread count on PWA icon) ─────────────
+// ── APP BADGE ────────────────────────────────────────
 function setAppBadge(count) {
   if ('setAppBadge' in navigator) {
     if(count>0) navigator.setAppBadge(count).catch(()=>{});
@@ -1767,7 +1839,7 @@ function aerr(c){
   return 'Something went wrong. Please try again.';
 }
 
-// ── TAB SWITCHING (modules) ──────────────────────────
+// ── TAB SWITCHING ────────────────────────────────────
 window.stab = (btn, tpid) => {
   const parent = btn.closest('.tabs').parentElement;
   btn.closest('.tabs').querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
@@ -1805,9 +1877,7 @@ window.closeSb = ()=>{
   document.getElementById('sb-m')?.classList.remove('open');
   document.getElementById('sb-ov').classList.remove('on');
 };
-// Clicking the overlay closes the sidebar
 document.getElementById('sb-ov').addEventListener('click', closeSb);
-// Clicking anywhere in main content area on mobile closes sidebar
 document.querySelectorAll('.main').forEach(el=>{
   el.addEventListener('click', e=>{
     if(window.innerWidth <= 800) {
@@ -1816,8 +1886,6 @@ document.querySelectorAll('.main').forEach(el=>{
     }
   });
 });
-
-// Close sidebar on nav click (mobile)
 document.querySelectorAll('.ni').forEach(el=>{
   el.addEventListener('click',()=>{if(window.innerWidth<=800) closeSb();});
 });
