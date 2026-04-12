@@ -918,7 +918,8 @@ async function initPush(uid) {
   if (Notification.permission === 'denied') return;
   // Show friendly banner instead of a cold browser prompt
   const banner = document.getElementById('notif-banner');
-  if (banner && localStorage.getItem('notif-dismissed') !== '1') {
+  localStorage.removeItem('notif-dismissed'); // temporary reset — remove after all users enrolled
+if (banner && Notification.permission !== 'granted') {
     banner.classList.add('on');
   }
 }
@@ -946,10 +947,17 @@ window.dismissNotifBanner = () => {
 async function registerFCMToken(uid) {
   if (!uid) return;
   try {
-    const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+    // Explicitly register the FCM service worker to avoid conflict with sw.js
+    const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    const token = await getToken(messaging, { 
+      vapidKey: VAPID_KEY, 
+      serviceWorkerRegistration: swReg 
+    });
     if (token) {
       await setDoc(doc(db, 'users', uid), { fcmToken: token }, { merge: true });
-      console.log('✅ FCM token saved');
+      console.log('✅ FCM token saved:', token);
+    } else {
+      console.warn('No FCM token returned');
     }
   } catch (e) {
     console.warn('FCM token error:', e.message);
