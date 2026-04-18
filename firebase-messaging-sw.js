@@ -1,13 +1,7 @@
-// ═══════════════════════════════════════════════════════════════
-//  firebase-messaging-sw.js
-//  Place this file at the ROOT of your project (same level as index.html)
-//  This file MUST be named exactly "firebase-messaging-sw.js"
-// ═══════════════════════════════════════════════════════════════
-
+// firebase-messaging-sw.js — place at root of project (same folder as index.html)
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
-// ── Same config as your main app ─────────────────────────────
 firebase.initializeApp({
   apiKey:            "AIzaSyBiU-23Ki5Cs369fdfGwzzNIYCrWCMIbko",
   authDomain:        "road-to-abroad-mentorship.firebaseapp.com",
@@ -19,49 +13,35 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// ── Handle messages received while the app is in the BACKGROUND ──
-messaging.onBackgroundMessage((payload) => {
-  console.log('[SW] Background message received:', payload);
+// Only show OS notification when the app window is NOT visible.
+// When the app IS open, the foreground onMessage handler in index.html
+// shows the in-app toast instead — preventing double notifications.
+messaging.onBackgroundMessage(async (payload) => {
+  const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const appIsVisible = allClients.some(c => c.visibilityState === 'visible');
+  if (appIsVisible) return; // app is open — let the toast handle it
 
-  const title = payload.notification?.title || '✈️ Path Abroad';
+  const title = payload.notification?.title || 'Path Abroad';
   const body  = payload.notification?.body  || 'You have a new update.';
-  const data  = payload.data || {};
 
-  self.registration.showNotification(title, {
+  await self.registration.showNotification(title, {
     body,
-    icon:    '/icon-192.png',
-    badge:   '/icon-192.png',          // small monochrome icon shown in status bar (Android)
-    tag:     'path-abroad-notif',      // replaces previous notification of same tag
+    icon:     '/icon-192.png',
+    badge:    '/icon-192.png',
+    tag:      'path-abroad',
     renotify: true,
-    data,
-    vibrate: [200, 100, 200],
-    actions: [
-      { action: 'open', title: '📖 Open App' },
-      { action: 'dismiss', title: 'Later' }
-    ]
+    vibrate:  [200, 100, 200],
+    data:     payload.data || {}
   });
 });
 
-// ── Tap on notification → open app ───────────────────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-
-  if (event.action === 'dismiss') return;
-
-  const appUrl = 'https://john-mentorship-hub.vercel.app';
-
+  const url = 'https://john-mentorship-hub.vercel.app';
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If app is already open in a tab, focus it
-      for (const client of clientList) {
-        if (client.url.startsWith(appUrl) && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // Otherwise open a new tab
-      if (clients.openWindow) {
-        return clients.openWindow(appUrl);
-      }
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const c of list) { if (c.url.startsWith(url) && 'focus' in c) return c.focus(); }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
     })
   );
 });
