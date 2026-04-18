@@ -506,7 +506,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
       <label class="fl">Password</label>
       <div style="position:relative;">
         <input class="fi" id="si-pw" type="password" placeholder="Your password" style="margin-bottom:0;padding-right:44px;"/>
-        <button type="button" onclick="togglePw('si-pw',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;line-height:1;" title="Show password"></button>
+        <button type="button" onclick="togglePw('si-pw',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;line-height:1;" title="Show password">🔒</button>
       </div>
       <div style="margin-bottom:13px;"></div>
       <button class="fbtn" id="si-btn" onclick="doSignIn()">Sign In</button>
@@ -523,7 +523,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
       <label class="fl">Password</label>
       <div style="position:relative;">
         <input class="fi" id="su-pw" type="password" placeholder="At least 6 characters" style="margin-bottom:0;padding-right:44px;"/>
-        <button type="button" onclick="togglePw('su-pw',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;line-height:1;" title="Hide Password"></button>
+        <button type="button" onclick="togglePw('su-pw',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;line-height:1;" title="Hide Password">🔓</button>
       </div>
       <div style="margin-bottom:13px;"></div>
       <button class="fbtn" id="su-btn" onclick="doSignUp()">Sign Up</button>
@@ -1738,12 +1738,12 @@ function initMentorMsgBadge(){
   });
 }
 // ── PASSWORD VISIBILITY TOGGLE ───────────────────────
-//window.togglePw = function(inputId, btn) {
-//  const input = document.getElementById(inputId);
-//  if (!input) return;
-//  if (input.type === 'password') { input.type='text'; //btn.textContent='🔓'; }
-//  else { input.type='password'; btn.textContent='🔒'; }
-//};
+window.togglePw = function(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.type === 'password') { input.type='text'; btn.textContent='🔓'; }
+  else { input.type='password'; btn.textContent='🔒'; }
+};
 
 // ── APP BADGE (unread count on PWA icon) ─────────────
 function setAppBadge(count) {
