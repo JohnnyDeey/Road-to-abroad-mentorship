@@ -1,4 +1,4 @@
-const CACHE = 'path-abroad-v5'; // bumped to v3 — triggers update banner for all users
+const CACHE = 'path-abroad-v5.1'; // bumped to v3 — triggers update banner for all users
 const ASSETS = ['/', '/index.html'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
