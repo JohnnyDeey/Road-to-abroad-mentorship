@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,26 +13,28 @@
 <link rel="icon" href="/icon-192.png"/>
 <link rel="apple-touch-icon" href="/icon-192.png"/>
 <script>
-  if('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then(reg => {
-        reg.addEventListener('updatefound', () => {
-          const newSW = reg.installing;
-          newSW.addEventListener('statechange', () => {
-            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-              // New version is ready — show the update banner
-              document.getElementById('update-banner').style.display = 'flex';
-              window._newSW = newSW;
-            }
+      if('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(reg => {
+          setInterval(() => reg.update(), 30 * 60 * 1000);
+          reg.addEventListener('updatefound', () => {
+            const newSW = reg.installing;
+            newSW.addEventListener('statechange', () => {
+              if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                document.getElementById('update-banner').style.display = 'flex';
+                window._newSW = newSW;
+              }
+            });
           });
-        });
-      }).catch(()=>{});
-    });
-  }
-  window.doUpdate = function() {
-    if(window._newSW) window._newSW.postMessage('SKIP_WAITING');
-    window.location.reload();
-  };
+        }).catch(()=>{});
+        // This is the key fix — reload when new SW takes over
+        navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+      });
+    }
+    window.doUpdate = function() {
+      if(window._newSW) window._newSW.postMessage('SKIP_WAITING');
+      else window.location.reload();
+    };
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet"/>
 <!-- EmailJS — sends emails directly from the browser, no backend needed -->
@@ -462,9 +465,52 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
   #mob-bar{display:none !important;}
   #sb-ov{display:none !important;}
 }
+
+/* NOTIFICATION BANNER */
+#notif-banner{background:#fffbf0;border-bottom:1px solid #f5dfa0;padding:10px 20px;display:none;align-items:center;gap:12px;font-size:0.84rem;color:#444;position:fixed;top:52px;left:0;right:0;z-index:250;}
+#notif-banner.on{display:flex;}
+#notif-banner strong{color:#0d1b2a;}
+.nb-yes{padding:6px 14px;background:#0d1b2a;color:#fff;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:background .2s;white-space:nowrap;}
+.nb-yes:hover{background:#e8a020;color:#0d1b2a;}
+.nb-no{background:none;border:none;color:#6b7280;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.8rem;margin-left:auto;}
+#notif-toast{position:fixed;top:70px;right:20px;max-width:340px;background:#0d1b2a;color:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 8px 32px rgba(0,0,0,0.28);z-index:9998;display:none;animation:slideIn .3s ease;border-left:4px solid #e8a020;}
+#notif-toast.on{display:flex;gap:12px;align-items:flex-start;}
+.nt-icon{font-size:1.3rem;flex-shrink:0;margin-top:1px;}
+.nt-body-inner{flex:1;}
+.nt-title{font-weight:700;font-size:0.86rem;margin-bottom:3px;}
+.nt-body-text{font-size:0.78rem;color:rgba(255,255,255,0.7);line-height:1.5;}
+.nt-close{background:none;border:none;color:rgba(255,255,255,0.5);cursor:pointer;font-size:1rem;padding:0;flex-shrink:0;}
+.nt-close:hover{color:#fff;}
+.all-badge{display:inline-block;background:#e8a020;color:#0d1b2a;font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+.test-panel{background:#fff;border:2px dashed #e8a020;border-radius:12px;padding:18px 22px;margin-bottom:16px;}
+.test-panel h3{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;color:#0d1b2a;margin-bottom:10px;}
+.test-btn{padding:8px 16px;background:#e8a020;color:#0d1b2a;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:700;cursor:pointer;margin-right:8px;margin-bottom:6px;transition:all .2s;}
+.test-btn:hover{background:#0d1b2a;color:#fff;}
+.test-out{font-size:0.78rem;color:#6b7280;margin-top:8px;min-height:16px;}
+@keyframes slideIn{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:none;}}
+@media(max-width:800px){#notif-toast{top:60px;right:10px;left:10px;max-width:none;}#notif-banner{top:52px;}}
+@media(min-width:801px){#notif-banner{top:0;left:268px;}}
+
 </style>
 </head>
 <body>
+
+<!-- NOTIFICATION PERMISSION BANNER -->
+<div id="notif-banner">
+  <span>🔔</span>
+  <div><strong>Enable notifications</strong> — get instant alerts when students message you or when your mentor sends feedback.</div>
+  <button class="nb-yes" onclick="requestPushPermission()">Enable</button>
+  <button class="nb-no" onclick="dismissNotifBanner()">Not now</button>
+</div>
+<!-- IN-APP TOAST -->
+<div id="notif-toast">
+  <div class="nt-icon">📩</div>
+  <div class="nt-body-inner">
+    <div class="nt-title" id="nt-title">New message</div>
+    <div class="nt-body-text" id="nt-body-text">You have a new update.</div>
+  </div>
+  <button class="nt-close" onclick="hideToast()">✕</button>
+</div>
 
 <!-- ════════════ UPDATE BANNER ════════════ -->
 <div id="update-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0d1b2a;color:#fff;padding:12px 20px;align-items:center;justify-content:space-between;gap:12px;z-index:9999;box-shadow:0 -4px 20px rgba(0,0,0,0.3);">
@@ -855,6 +901,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
          sendPasswordResetEmail, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getMessaging, getToken, onMessage }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot,
          collection, getDocs, serverTimestamp, query, where, deleteDoc,
          addDoc, updateDoc, orderBy }
@@ -874,6 +922,48 @@ const MENTOR = "sjohndamilola92@gmail.com";
 const app  = initializeApp(CFG);
 const auth = getAuth(app);
 const db   = getFirestore(app);
+const msg  = getMessaging(app);
+    const VAPID_KEY = "BEptvHyXIRxXYuzcbqkpgavcPcdVAFPI8jIWp-uPXCFayjjPe4WHvjs9wbNykdFwvORalwsqbsp29TUXN6yxaII";
+
+async function initPush(uid) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') { await saveFCMToken(uid); listenForeground(); return; }
+  if (Notification.permission === 'denied') return;
+  localStorage.removeItem('notif-dismissed');
+  document.getElementById('notif-banner')?.classList.add('on');
+}
+window.requestPushPermission = async () => {
+  dismissNotifBanner();
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') { await saveFCMToken(me?.uid); listenForeground(); showToast('Notifications enabled!', 'You will now get instant alerts for messages and feedback.', 4000); }
+  } catch(e) {}
+};
+window.dismissNotifBanner = () => { document.getElementById('notif-banner')?.classList.remove('on'); localStorage.setItem('notif-dismissed','1'); };
+async function saveFCMToken(uid) {
+  if (!uid) return;
+  try {
+    const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    const token = await getToken(msg, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
+    if (token) { await setDoc(doc(db,'users',uid),{fcmToken:token},{merge:true}); console.log('FCM saved'); }
+  } catch(e) { console.warn('FCM:',e.message); }
+}
+function listenForeground() {
+  onMessage(msg, (payload) => {
+    showToast(payload.notification?.title||'Path Abroad', payload.notification?.body||'', 7000);
+    if (isMentor && unsubMMsgs) loadMInbox();
+    else if (!isMentor && unsubSMsgs) loadSInbox();
+  });
+}
+function showToast(title, body, duration=5000) {
+  document.getElementById('nt-title').textContent = title;
+  document.getElementById('nt-body-text').textContent = body;
+  document.getElementById('notif-toast').classList.add('on');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(hideToast, duration);
+}
+window.hideToast = () => document.getElementById('notif-toast').classList.remove('on');
+function firstName(fullName) { return (fullName||'').split(' ')[0] || fullName || 'there'; }
 
 // ── TASKS ────────────────────────────────────────────
 const TASKS = [
@@ -948,7 +1038,7 @@ onAuthStateChanged(auth, async user => {
       const mn = document.getElementById('mentor-name');
       if(mn) mn.textContent = msnap.data().name;
     }
-    loadMentor(); initMentorMsgBadge();
+    loadMentor(); initMentorMsgBadge(); initPush(user.uid);
     return;
   }
   const snap = await getDoc(doc(db,'users',user.uid));
@@ -968,6 +1058,7 @@ onAuthStateChanged(auth, async user => {
     buildTasks();
     listenStudent(user.uid);
     initStudentMsgBadge(user.uid);
+    initPush(user.uid);
   } else {
     if (!snap.exists()) {
       await setDoc(doc(db,'users',user.uid),{email:user.email,name:user.email,role:'student',status:'pending',createdAt:serverTimestamp()});
@@ -985,8 +1076,10 @@ onAuthStateChanged(auth, async user => {
         showApprovalCelebration(() => {
           document.getElementById('s-name').textContent = s.data().name || user.email;
           show('screen-student');
-          buildTasks();
-          listenStudent(user.uid);
+    buildTasks();
+    listenStudent(user.uid);
+    initStudentMsgBadge(user.uid);
+    initPush(user.uid);
         });
       }
     });
@@ -1084,7 +1177,7 @@ function routeToPending(uid, email, name) {
       if(unsubP){unsubP();unsubP=null;}
       showApprovalCelebration(() => {
         document.getElementById('s-name').textContent = s.data().name || email;
-        show('screen-student'); buildTasks(); listenStudent(uid); initStudentMsgBadge(uid); initStudentMsgBadge(uid);
+        show('screen-student'); buildTasks(); listenStudent(uid); initStudentMsgBadge(uid); initStudentMsgBadge(uid); initPush(user.uid);
       });
     }
   });
@@ -1673,22 +1766,39 @@ function loadMSent(){
     list.innerHTML=msgs.length?msgs.map(m=>msgRow(m,true)).join(''):`<div class="msg-empty">No sent messages to ${stuName} yet.</div>`;
   });
 }
+
 function showMCompose(){
   if(unsubMMsgs){unsubMMsgs();unsubMMsgs=null;}
   const toolbar=document.getElementById('m-msg-toolbar');
   if(toolbar)toolbar.style.display='none';
   const opts=Object.entries(stuEmailMap).map(([uid,s])=>`<option value="${uid}|||${s.name}">${s.name} (${s.email})</option>`).join('');
-  const _preSelected = stuUID && stuEmailMap[stuUID] ? stuUID+'|||'+stuEmailMap[stuUID].name : '';
+  const _pre=stuUID&&stuEmailMap[stuUID]?stuUID+'|||'+stuEmailMap[stuUID].name:'';
+  const count=Object.keys(stuEmailMap).length;
   document.getElementById('m-msg-list').innerHTML=`<div class="msg-compose-wrap">
     <div class="msg-back" onclick="mMsgTab('inbox')">← Back</div>
+    <div class="test-panel">
+      <h3>🧪 Test Notifications (use before deploying)</h3>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">Test that push is working on your own device without messaging students.</p>
+      <button class="test-btn" onclick="testToast()">📩 Test in-app toast</button>
+      <button class="test-btn" onclick="testPushSelf()">🔔 Test OS push notification</button>
+      <div class="test-out" id="test-out"></div>
+    </div>
     <label class="msg-flabel">To</label>
-    <select class="msg-input" id="mc-to" style="background:#fff;"><option value="">— Select student —</option>${opts}</select>
+    <select class="msg-input" id="mc-to" style="background:#fff;" onchange="updateRecipientHint()">
+      <option value="">— Select recipient —</option>
+      ${count>0?`<option value="@all">📢 @all — Broadcast to ALL ${count} students</option>`:''}
+      ${opts}
+    </select>
+    <div id="recipient-hint" style="font-size:0.76rem;color:var(--muted);margin-top:-8px;margin-bottom:10px;"></div>
     <label class="msg-flabel">Subject</label>
     <input class="msg-input" id="mc-subject" placeholder="Subject…"/>
     <label class="msg-flabel">Message</label>
-    <textarea class="msg-input" id="mc-body" rows="6" placeholder="Write your message…" style="resize:vertical;"></textarea>
+    <div style="font-size:0.74rem;color:var(--muted);margin-bottom:6px;">
+      Use <strong>{name}</strong> in your message — it will be replaced with each student's first name automatically.
+    </div>
+    <textarea class="msg-input" id="mc-body" rows="6" placeholder="e.g. Hi {name}, just checking in on your progress…" style="resize:vertical;"></textarea>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <button class="msg-send-btn" onclick="doSendMMsg()">Send Message</button>
+      <button class="msg-send-btn" onclick="doSendMMsg()" id="mc-send-btn">Send Message</button>
       <span id="mc-status" style="font-size:0.8rem;"></span>
     </div>
     <div style="margin-top:14px;padding:12px 14px;background:#f5f0e8;border-radius:9px;">
@@ -1702,41 +1812,103 @@ function showMCompose(){
       </div>
     </div>
   </div>`;
-  if(_preSelected){ const sel=document.getElementById('mc-to'); if(sel) sel.value=_preSelected; }
+  if(_pre){const sel=document.getElementById('mc-to');if(sel){sel.value=_pre;updateRecipientHint();}}
 }
-window.applyTpl=function(type){
-  const t=TEMPLATES[type];if(!t)return;
-  const s=document.getElementById('mc-subject');const b=document.getElementById('mc-body');
-  if(s)s.value=t.sub;if(b)b.value=t.body;
+
+window.updateRecipientHint=function(){
+  const val=document.getElementById('mc-to')?.value;
+  const hint=document.getElementById('recipient-hint');
+  const btn=document.getElementById('mc-send-btn');
+  if(!hint)return;
+  if(val==='@all'){
+    const n=Object.keys(stuEmailMap).length;
+    hint.innerHTML=`<span style="color:var(--gold);font-weight:600;">This will send a personalised message to all ${n} student${n!==1?'s':''}. {name} will be replaced with each student's first name.</span>`;
+    if(btn)btn.textContent='Send to All Students';
+  }else if(val){
+    const name=val.split('|||')[1]||'student';
+    hint.innerHTML=`Sending to: <strong>${name}</strong>`;
+    if(btn)btn.textContent='Send Message';
+  }else{hint.innerHTML='';if(btn)btn.textContent='Send Message';}
 };
+
 window.doSendMMsg=async function(){
   const toVal=document.getElementById('mc-to')?.value;
   const subject=document.getElementById('mc-subject')?.value?.trim();
-  const body=document.getElementById('mc-body')?.value?.trim();
+  const bodyTemplate=document.getElementById('mc-body')?.value?.trim();
   const st=document.getElementById('mc-status');
-  if(!toVal){if(st){st.textContent='Please select a student.';st.style.color='#e74c3c';}return;}
+  if(!toVal){if(st){st.textContent='Please select a recipient.';st.style.color='#e74c3c';}return;}
   if(!subject){if(st){st.textContent='Please enter a subject.';st.style.color='#e74c3c';}return;}
-  if(!body){if(st){st.textContent='Please write a message.';st.style.color='#e74c3c';}return;}
-  const [toUid,...rest]=toVal.split('|||');const toName=rest.join('|||');
-  if(st){st.textContent='Sending…';st.style.color='#888';}
-  await addDoc(collection(db,'messages'),{senderUid:MENTOR_ID,senderName:'Mentor',recipientUid:toUid,recipientName:toName,subject,body,createdAt:serverTimestamp(),read:false});
-  if(st){st.textContent='✓ Message sent!';st.style.color='#27ae60';}
-  setTimeout(()=>{document.getElementById('m-msg-toolbar').style.display='';mMsgTab('sent');},1500);
+  if(!bodyTemplate){if(st){st.textContent='Please write a message.';st.style.color='#e74c3c';}return;}
+  if(st){st.textContent='Sending…';st.style.color='var(--muted)';}
+  if(toVal==='@all'){
+    const students=Object.entries(stuEmailMap);
+    if(!students.length){if(st){st.textContent='No approved students yet.';st.style.color='#e74c3c';}return;}
+    let sent=0;
+    for(const [uid,stu] of students){
+      const personalBody=bodyTemplate.replace(/\{name\}/gi,firstName(stu.name));
+      await addDoc(collection(db,'messages'),{senderUid:MENTOR_ID,senderName:'Mentor',recipientUid:uid,recipientName:stu.name,subject,body:personalBody,isBroadcast:true,createdAt:serverTimestamp(),read:false});
+      sent++;
+    }
+    if(st){st.textContent=`✓ Broadcast sent to ${sent} student${sent!==1?'s':''}!`;st.style.color='#27ae60';}
+    document.getElementById('mc-subject').value='';
+    document.getElementById('mc-body').value='';
+    setTimeout(()=>{document.getElementById('m-msg-toolbar').style.display='';mMsgTab('sent');},2000);
+  }else{
+    const [toUid,...rest]=toVal.split('|||');const toName=rest.join('|||');
+    const personalBody=bodyTemplate.replace(/\{name\}/gi,firstName(toName));
+    await addDoc(collection(db,'messages'),{senderUid:MENTOR_ID,senderName:'Mentor',recipientUid:toUid,recipientName:toName,subject,body:personalBody,createdAt:serverTimestamp(),read:false});
+    if(st){st.textContent='✓ Message sent!';st.style.color='#27ae60';}
+    setTimeout(()=>{document.getElementById('m-msg-toolbar').style.display='';mMsgTab('sent');},1500);
+  }
 };
-function initStudentMsgBadge(uid){
-  return onSnapshot(query(collection(db,'messages'),where('recipientUid','==',uid)),snap=>{
-    let u=0;snap.forEach(d=>{if(!d.data().read)u++;});
-    const b=document.getElementById('s-msg-badge');
-    if(b){b.textContent=u;b.style.display=u>0?'inline':'none';}
-  });
-}
-function initMentorMsgBadge(){
-  return onSnapshot(query(collection(db,'messages'),where('recipientUid','==',MENTOR_ID)),snap=>{
-    let u=0;snap.forEach(d=>{if(!d.data().read)u++;});
-    const b=document.getElementById('m-msg-badge');
-    if(b){b.textContent=u;b.style.display=u>0?'inline-block':'none';}
-  });
-}
+
+window.testToast=function(){
+  showToast('Test notification','This is how an in-app notification looks when a student messages you.',6000);
+  const out=document.getElementById('test-out');if(out)out.textContent='✓ Toast shown above';
+};
+
+window.testPushSelf=async function(){
+  const out=document.getElementById('test-out');
+  if(!me){if(out)out.textContent='⚠ Not logged in';return;}
+  if(Notification.permission!=='granted'){if(out)out.textContent='⚠ Enable notifications first';return;}
+  if(out)out.textContent='Sending…';
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    await reg.showNotification('Path Abroad — Test',{body:'Push is working! Students see this when the app is closed.',icon:'/icon-192.png',badge:'/icon-192.png',tag:'test-notif'});
+    if(out)out.textContent='✓ OS notification fired! If you saw a popup, push is working.';
+  }catch(e){if(out)out.textContent='✗ Error: '+e.message;}
+};
+
+// ADD notification test functions:
+window.testToast=function(){
+  showToast('Test notification', 'This is how an in-app notification looks when a student messages you while the app is open.', 6000);
+  const out=document.getElementById('test-out');if(out)out.textContent='Toast shown above ✓';
+};
+window.testPushSelf=async function(){
+  const out=document.getElementById('test-out');
+  if(!me){if(out)out.textContent='Not logged in';return;}
+  if(Notification.permission!=='granted'){if(out)out.textContent='Enable notifications first (click Enable in the banner)';return;}
+  if(out)out.textContent='Sending test push…';
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    await reg.showNotification('Path Abroad — Test',{
+      body:'Push notifications are working! Students see this when the app is closed.',
+      icon:'/icon-192.png',badge:'/icon-192.png',tag:'test-notif'
+    });
+    if(out)out.textContent='OS notification sent! Did you see a popup? If yes, push is working correctly.';
+  }catch(e){if(out)out.textContent='Error: '+e.message;}
+};
+
+// ALSO: Fix Re: Re: Re: accumulation — FIND openMsg function and find this line:
+//   const reSubject = ('Re: '+(msg.subject||'')).replace(...)
+// REPLACE with:
+//   const cleanSubject = (msg.subject||'').replace(/^(Re:\s*)+/i,'');
+//   const reSubject = ('Re: '+cleanSubject).replace(...)
+
+// ALSO: Update TEMPLATES to include {name} personalisation:
+// In your existing TEMPLATES const, add {name} to the body of each template:
+// Change "Hi," to "Hi {name}," in each template body
+
 // ── PASSWORD VISIBILITY TOGGLE ───────────────────────
 window.togglePw = function(inputId, btn) {
   const input = document.getElementById(inputId);
