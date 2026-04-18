@@ -12,43 +12,163 @@
 <link rel="icon" href="/icon-192.png"/>
 <link rel="apple-touch-icon" href="/icon-192.png"/>
 <script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/sw.js').then(reg=>{
-      setInterval(()=>reg.update(),30*60*1000);
-      reg.addEventListener('updatefound',()=>{
-        const nw=reg.installing;
-        nw.addEventListener('statechange',()=>{
-          if(nw.state==='installed'&&navigator.serviceWorker.controller){
-            document.getElementById('update-banner').style.display='flex';
-            window._newSW=nw;
-          }
+  if('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const newSW = reg.installing;
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              // New version is ready — show the update banner
+              document.getElementById('update-banner').style.display = 'flex';
+              window._newSW = newSW;
+            }
+          });
         });
-      });
-    }).catch(()=>{});
-    navigator.serviceWorker.addEventListener('controllerchange',()=>window.location.reload());
-  });
-}
-window.doUpdate=function(){if(window._newSW)window._newSW.postMessage('SKIP_WAITING');else window.location.reload();};
+      }).catch(()=>{});
+    });
+  }
+  window.doUpdate = function() {
+    if(window._newSW) window._newSW.postMessage('SKIP_WAITING');
+    window.location.reload();
+  };
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet"/>
+<!-- EmailJS — sends emails directly from the browser, no backend needed -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
-const EMAILJS_PUBLIC_KEY="3RTSTs0pEsxyidTg-",EMAILJS_SERVICE_ID="service_0xz1jj6",EMAILJS_TMPL_NEW="template_9ubbwzc",EMAILJS_TMPL_APPR="template_9ubbwzc",MENTOR_EMAIL_NOTIFY="sjohndamilola92@gmail.com",APP_URL="https://john-mentorship-hub.vercel.app";
-if(EMAILJS_PUBLIC_KEY!=="YOUR_PUBLIC_KEY")emailjs.init({publicKey:EMAILJS_PUBLIC_KEY});
-function sendNewStudentEmail(name,email){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")return;emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TMPL_NEW,{to_email:MENTOR_EMAIL_NOTIFY,subject:"New student waiting for approval — "+name,header_label:"Mentor Notification",icon:"🔔",icon_bg:"#fff8e1",headline:"A new student is waiting for your approval",body_text:"A new student just signed up on Path Abroad.",student_name:name,student_email:email,tip_text:"Once you approve them they will instantly gain access.",button_text:"Review & Approve Student →",app_url:APP_URL}).catch(e=>console.error(e));}
-function sendApprovalEmail(sn,se){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")return;emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TMPL_APPR,{to_email:se,subject:"Your Path Abroad account has been approved!",header_label:"Account Approved",icon:"✓",icon_bg:"#eaf3de",headline:"You're approved, "+sn+"!",body_text:"Your mentor has granted you full access.",student_name:sn,student_email:se,tip_text:"Start with Module 1.",button_text:"Start Your Journey →",app_url:APP_URL}).catch(e=>console.error(e));}
+/*
+  ═══════════════════════════════════════════════════════
+  EMAIL SETUP — DO THIS ONCE, TAKES 5 MINUTES
+  ═══════════════════════════════════════════════════════
+  1. Go to https://www.emailjs.com and sign up (free)
+  2. Add Email Service → connect your Gmail → copy the Service ID
+  3. Create Email Templates (2 templates needed):
+
+  TEMPLATE 1 — "new_student" (sent to mentor when someone signs up)
+    Subject: New student waiting for approval — {{student_name}}
+    Body:
+      Hi,
+      A new student just signed up on Path Abroad and is waiting for your approval.
+      Name: {{student_name}}
+      Email: {{student_email}}
+      Log in at {{app_url}} to approve or decline them.
+
+  TEMPLATE 2 — "student_approved" (sent to student when mentor approves)
+    Subject: Your Path Abroad account has been approved!
+    Body:
+      Hi {{student_name}},
+      Great news! Your mentor has approved your Path Abroad account.
+      You can now log in and start your journey: {{app_url}}
+      Let's get to work!
+
+  4. Go to Account → API Keys → copy your Public Key
+  5. Fill in the 4 values below:
+  ═══════════════════════════════════════════════════════
+*/
+  // ── PASTE YOUR EMAILJS VALUES HERE ──────────────────
+  const EMAILJS_PUBLIC_KEY  = "3RTSTs0pEsxyidTg-";
+  const EMAILJS_SERVICE_ID  = "service_0xz1jj6";
+  const EMAILJS_TMPL_NEW    = "template_9ubbwzc";
+  const EMAILJS_TMPL_APPR   = "template_9ubbwzc";
+  const MENTOR_EMAIL_NOTIFY = "sjohndamilola92@gmail.com";
+  const APP_URL             = "https://john-mentorship-hub.vercel.app";
+
+  if (EMAILJS_PUBLIC_KEY !== "YOUR_PUBLIC_KEY") {
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  }
+
+  function sendNewStudentEmail(name, email) {
+    if (EMAILJS_PUBLIC_KEY === "YOUR_PUBLIC_KEY") return;
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TMPL_NEW, {
+      to_email:      MENTOR_EMAIL_NOTIFY,
+      subject:       "New student waiting for approval — " + name,
+      header_label:  "Mentor Notification",
+      icon:          "🔔",
+      icon_bg:       "#fff8e1",
+      headline:      "A new student is waiting for your approval",
+      body_text:     "A new student just signed up on Path Abroad. Review their details below and log in to approve or decline their access.",
+      student_name:  name,
+      student_email: email,
+      tip_text:      "Once you approve them they will instantly gain access to the full programme and receive a confirmation email.",
+      button_text:   "Review & Approve Student →",
+      app_url:       APP_URL
+    }).then(() => {
+      console.log("✅ New student email sent to mentor");
+    }).catch(err => {
+      console.error("❌ Failed to send new student email:", JSON.stringify(err));
+    });
+  }
+
+  function sendApprovalEmail(studentName, studentEmail) {
+    if (EMAILJS_PUBLIC_KEY === "YOUR_PUBLIC_KEY") return;
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TMPL_APPR, {
+      to_email:      studentEmail,
+      subject:       "Your Path Abroad account has been approved!",
+      header_label:  "Account Approved",
+      icon:          "✓",
+      icon_bg:       "#eaf3de",
+      headline:      "You're approved, " + studentName + "!",
+      body_text:     "Your mentor has reviewed your account and granted you full access to the Path Abroad programme. You can now log in, read your modules, and start checking off your tasks.",
+      student_name:  studentName,
+      student_email: studentEmail,
+      tip_text:      "Start with Module 1: Know Yourself First — it takes about 20 minutes and lays the foundation for everything else.",
+      button_text:   "Start Your Journey →",
+      app_url:       APP_URL
+    }).then(() => {
+      console.log("✅ Approval email sent to", studentEmail);
+    }).catch(err => {
+      console.error("❌ Failed to send approval email:", JSON.stringify(err));
+    });
+  }
 </script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-height:100vh;}
-:root{--navy:#0d1b2a;--navy2:#1a2d42;--gold:#e8a020;--green:#27ae60;--red:#e74c3c;--muted:#6b7280;--border:#e2ddd0;--card:#fff;--sw:268px;}
-#screen-loading,#screen-login,#screen-pending,#screen-student,#screen-mentor{display:none;}
-#screen-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:var(--navy);gap:14px;}
+/* ─── RESET & BASE ─────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-height:100vh;}
+:root{
+  --navy:#0d1b2a;--navy2:#1a2d42;--gold:#e8a020;
+  --green:#27ae60;--red:#e74c3c;
+  --muted:#6b7280;--border:#e2ddd0;--card:#fff;
+  --sw:268px;
+}
+
+/* ─── SCREEN MANAGER ───────────────────────────────── */
+/* Every screen is hidden by default.
+   JavaScript calls showOnly() to reveal exactly one. */
+#screen-loading,
+#screen-login,
+#screen-pending,
+#screen-student,
+#screen-mentor { display:none; }
+
+/* Loading is the exception — visible until Firebase responds */
+#screen-loading {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  background:var(--navy);
+  gap:14px;
+}
 #screen-loading .plane{font-size:2.4rem;animation:spin 1.8s linear infinite;}
 #screen-loading p{color:rgba(255,255,255,0.4);font-size:0.88rem;}
 @keyframes spin{to{transform:rotate(360deg);}}
-#screen-login{min-height:100vh;align-items:center;justify-content:center;background:var(--navy);}
-.lbox{background:#fff;border-radius:18px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.35);}
+
+/* ─── LOGIN ────────────────────────────────────────── */
+#screen-login{
+  min-height:100vh;
+  align-items:center;
+  justify-content:center;
+  background:var(--navy);
+}
+.lbox{
+  background:#fff;border-radius:18px;
+  padding:40px 36px;width:100%;max-width:400px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
 .llogo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px;}
 .llogo-icon{width:44px;height:44px;border-radius:12px;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.5rem;}
 .llogo-text{font-family:'Playfair Display',serif;font-size:1.65rem;font-weight:900;color:var(--navy);}
@@ -57,7 +177,8 @@ function sendApprovalEmail(sn,se){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")retu
 .ltabs{display:flex;gap:3px;background:#f0ece4;border-radius:10px;padding:3px;margin-bottom:20px;}
 .ltab{flex:1;padding:9px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;color:var(--muted);transition:all .2s;}
 .ltab.on{background:#fff;color:var(--navy);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,0.1);}
-.lform{display:none;}.lform.on{display:block;}
+.lform{display:none;}
+.lform.on{display:block;}
 .fl{font-size:0.73rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--navy);margin-bottom:5px;display:block;}
 .fi{width:100%;padding:11px 13px;border:2px solid var(--border);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:0.93rem;outline:none;transition:border .2s;margin-bottom:13px;}
 .fi:focus{border-color:var(--gold);}
@@ -67,12 +188,30 @@ function sendApprovalEmail(sn,se){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")retu
 .flink{text-align:center;font-size:0.8rem;color:var(--gold);cursor:pointer;margin-top:9px;text-decoration:underline;}
 .ferr{font-size:0.81rem;text-align:center;margin-top:8px;min-height:16px;line-height:1.4;}
 .fnote{background:#fffbf0;border-left:3px solid var(--gold);padding:9px 13px;border-radius:0 7px 7px 0;font-size:0.8rem;color:#666;margin-bottom:14px;line-height:1.5;}
-#screen-pending{min-height:100vh;align-items:center;justify-content:center;background:var(--navy);}
+
+/* ─── PENDING ──────────────────────────────────────── */
+#screen-pending{
+  min-height:100vh;
+  align-items:center;
+  justify-content:center;
+  background:var(--navy);
+}
 .pbox{background:#fff;border-radius:18px;padding:44px 36px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.35);}
 .pbox .icon{font-size:2.8rem;margin-bottom:14px;}
 .pbox h2{font-family:'Playfair Display',serif;font-size:1.45rem;color:var(--navy);margin-bottom:10px;}
 .pbox p{font-size:0.86rem;color:#555;line-height:1.7;}
-.sb{position:fixed;left:0;top:0;width:var(--sw);height:100vh;background:var(--navy);overflow-y:auto;z-index:400;display:flex;flex-direction:column;box-shadow:4px 0 20px rgba(0,0,0,0.2);transition:transform .28s ease;}
+
+/* ─── SIDEBAR ──────────────────────────────────────── */
+.sb{
+  position:fixed;left:0;top:0;
+  width:var(--sw);height:100vh;
+  background:var(--navy);
+  overflow-y:auto;
+  z-index:400;
+  display:flex;flex-direction:column;
+  box-shadow:4px 0 20px rgba(0,0,0,0.2);
+  transition:transform .28s ease;
+}
 .sb-hd{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,0.08);}
 .sb-lw{display:flex;align-items:center;gap:9px;}
 .sb-li{width:34px;height:34px;border-radius:9px;background:rgba(232,160,32,0.14);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0;}
@@ -95,11 +234,21 @@ function sendApprovalEmail(sn,se){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")retu
 .sb-ur{font-size:0.68rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.06em;}
 .sb-lo{margin-top:8px;width:100%;padding:7px;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.09);border-radius:7px;cursor:pointer;font-size:0.78rem;font-family:'DM Sans',sans-serif;transition:all .2s;}
 .sb-lo:hover{background:rgba(231,76,60,0.18);color:#fff;}
-#mob-bar{display:none;position:fixed;top:0;left:0;right:0;height:52px;background:var(--navy);z-index:300;align-items:center;padding:0 14px;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,0.25);}
+
+/* ─── MOBILE TOP BAR ───────────────────────────────── */
+#mob-bar{
+  display:none;
+  position:fixed;top:0;left:0;right:0;height:52px;
+  background:var(--navy);z-index:300;
+  align-items:center;padding:0 14px;gap:10px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.25);
+}
 .mob-ml{font-family:'Playfair Display',serif;font-size:0.98rem;font-weight:700;color:#fff;flex:1;}
 .mob-ml span{color:var(--gold);}
 #mob-btn{background:none;border:none;color:#fff;font-size:1.35rem;cursor:pointer;padding:4px 7px;}
 #sb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.52);z-index:350;}
+
+/* ─── MAIN AREA ────────────────────────────────────── */
 .main{margin-left:var(--sw);min-height:100vh;}
 .hero{background:var(--navy2);background-image:radial-gradient(ellipse at 70% 50%,rgba(232,160,32,0.11) 0%,transparent 60%);color:#fff;padding:56px 52px 44px;position:relative;overflow:hidden;}
 .hero::before{content:'';position:absolute;top:-44px;right:-44px;width:240px;height:240px;border-radius:50%;border:34px solid rgba(232,160,32,0.05);pointer-events:none;}
@@ -111,11 +260,15 @@ function sendApprovalEmail(sn,se){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")retu
 .hst .n{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:var(--gold);}
 .hst .l{font-size:0.7rem;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.06em;}
 .ac{padding:28px 52px 76px;max-width:900px;}
+
+/* ─── SECTIONS ─────────────────────────────────────── */
 .sec{margin-bottom:52px;}
 .sh{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--border);}
 .sb2{width:36px;height:36px;border-radius:8px;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:0.95rem;flex-shrink:0;}
 .sh h2{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;color:var(--navy);}
 .sh p{font-size:0.78rem;color:var(--muted);margin-top:1px;}
+
+/* ─── CARDS ─────────────────────────────────────────── */
 .card{background:var(--card);border-radius:12px;padding:18px 22px;margin-bottom:12px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.04);}
 .card h3{font-family:'Playfair Display',serif;font-size:0.98rem;font-weight:700;margin-bottom:6px;color:var(--navy);}
 .card p,.card li{font-size:0.86rem;line-height:1.7;color:#444;}
@@ -125,17 +278,26 @@ function sendApprovalEmail(sn,se){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")retu
 .ib strong{color:var(--navy);}
 .wb{background:#fff8f0;border-left:4px solid #f39c12;border-radius:0 8px 8px 0;padding:11px 15px;margin:12px 0;font-size:0.84rem;line-height:1.6;color:#555;}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* ─── TABS ──────────────────────────────────────────── */
 .tabs{display:flex;gap:3px;background:#ede9e0;border-radius:9px;padding:3px;margin-bottom:14px;}
 .tb{flex:1;padding:7px 9px;border-radius:7px;border:none;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.78rem;color:var(--muted);transition:all .2s;font-weight:500;}
 .tb.on{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,0.09);font-weight:600;}
-.tp{display:none;}.tp.on{display:block;}
+.tp{display:none;}
+.tp.on{display:block;}
+
+/* ─── EMAIL TEMPLATE ────────────────────────────────── */
 .etpl{background:#f8f7ff;border:1px solid #d8d4ff;border-radius:10px;padding:18px;margin:12px 0;font-family:'DM Mono',monospace;font-size:0.78rem;line-height:1.9;color:#333;white-space:pre-wrap;position:relative;}
 .elbl{font-size:0.66rem;letter-spacing:0.1em;text-transform:uppercase;color:#8b83cc;margin-bottom:8px;font-family:'DM Sans',sans-serif;font-weight:600;}
 .cpb{position:absolute;top:10px;right:10px;background:var(--navy);color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:0.68rem;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .cpb:hover{background:var(--gold);color:var(--navy);}
+
+/* ─── PILLS ─────────────────────────────────────────── */
 .rl{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
 .rp{display:inline-flex;align-items:center;background:var(--navy);color:#fff;padding:5px 12px;border-radius:99px;font-size:0.76rem;text-decoration:none;font-weight:500;transition:background .2s;}
 .rp:hover{background:var(--gold);color:var(--navy);}
+
+/* ─── TIMELINE ──────────────────────────────────────── */
 .tl{position:relative;padding-left:22px;}
 .tl::before{content:'';position:absolute;left:5px;top:8px;bottom:8px;width:2px;background:var(--border);}
 .tli{position:relative;margin-bottom:18px;}
@@ -145,12 +307,16 @@ function sendApprovalEmail(sn,se){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")retu
 .tld2{font-size:0.8rem;color:var(--muted);line-height:1.5;}
 .tli ul{margin:3px 0 0 14px;}
 .tli li{font-size:0.8rem;color:#555;line-height:1.8;}
+
+/* ─── MONTH BAND ────────────────────────────────────── */
 .mb{background:var(--navy);color:#fff;border-radius:10px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;margin-top:24px;}
 .mb-t{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;}
 .mb-n{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:var(--gold);opacity:0.22;}
 .tgt{font-size:0.66rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;}
+
+/* ─── TASK ITEMS ─────────────────────────────────────── */
 .ti{display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:6px;transition:all .2s;position:relative;overflow:hidden;}
-.ti:hover{border-color:var(--gold);}
+.ti:hover{border-color:var(--gold);box-shadow:0 2px 8px rgba(232,160,32,0.1);}
 .ti.done{background:#f4fdf7;border-color:#a8d8b9;}
 .ti.done::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--green);}
 .tc{width:20px;height:20px;border-radius:5px;border:2px solid #d0ccc4;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all .2s;margin-top:1px;}
@@ -168,6 +334,8 @@ function sendApprovalEmail(sn,se){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")retu
 .tsb{padding:5px 12px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:0.74rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;white-space:nowrap;}
 .tsb:hover,.tsb.uns{background:var(--gold);color:var(--navy);}
 .mfb{margin-top:6px;padding:6px 10px;background:#fff8e1;border-radius:6px;font-size:0.78rem;color:#555;border-left:3px solid var(--gold);}
+
+/* ─── MENTOR DASHBOARD ──────────────────────────────── */
 .mhero{background:var(--navy2);color:#fff;padding:48px 52px 32px;background-image:radial-gradient(ellipse at 80% 40%,rgba(232,160,32,0.09) 0%,transparent 60%);}
 .mhero h1{font-family:'Playfair Display',serif;font-size:2.1rem;font-weight:900;}
 .mhero h1 em{color:var(--gold);font-style:normal;}
@@ -182,7 +350,7 @@ function sendApprovalEmail(sn,se){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")retu
 .mc2 .ms{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;color:var(--navy);}
 .mcnt{padding:24px 52px 76px;max-width:900px;}
 .mmh{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--navy);padding:11px 0 6px;border-bottom:2px solid var(--border);margin-bottom:11px;margin-top:20px;}
-.mr{display:flex;align-items:flex-start;gap:10px;background:#fff;border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:6px;}
+.mr{display:flex;align-items:flex-start;gap:10px;background:#fff;border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:6px;transition:all .2s;}
 .mr.done{background:#f4fdf7;border-color:#a8d8b9;}
 .md{width:12px;height:12px;border-radius:50%;background:#e0ddd7;flex-shrink:0;margin-top:3px;transition:background .3s;}
 .md.done{background:var(--green);}
@@ -193,10 +361,12 @@ function sendApprovalEmail(sn,se){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")retu
 .mr.done .mm{color:var(--green);}
 .mns{margin-top:4px;padding:5px 9px;background:#fff8e1;border-radius:5px;font-size:0.76rem;color:#555;border-left:3px solid var(--gold);}
 .mfr{display:flex;gap:6px;margin-top:6px;}
-.mfi{flex:1;padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.76rem;font-family:'DM Sans',sans-serif;outline:none;}
+.mfi{flex:1;padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.76rem;font-family:'DM Sans',sans-serif;outline:none;transition:border .2s;}
 .mfi:focus{border-color:var(--gold);}
-.mfbt{padding:5px 12px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:0.74rem;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.mfbt{padding:5px 12px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:0.74rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;}
 .mfbt:hover{background:var(--gold);color:var(--navy);}
+
+/* ─── APPROVAL BANNER ───────────────────────────────── */
 #appr-box{display:none;margin:0 52px;padding-bottom:16px;}
 .aph{font-weight:600;font-size:0.86rem;color:var(--navy);padding:12px 16px;background:#fff8e1;border-radius:9px 9px 0 0;border:1px solid #f5dfa0;border-bottom:none;}
 .apr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:#fff;border:1px solid #f5dfa0;border-top:none;}
@@ -208,437 +378,1461 @@ function sendApprovalEmail(sn,se){if(EMAILJS_PUBLIC_KEY==="YOUR_PUBLIC_KEY")retu
 .apno{padding:5px 11px;background:#f8f8f8;color:#999;border:1px solid #ddd;border-radius:6px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .apno:hover{background:#fee;color:var(--red);}
 #pend-badge{display:none;background:var(--red);color:#fff;border-radius:99px;font-size:0.6rem;padding:1px 5px;font-weight:700;margin-left:4px;vertical-align:middle;}
+
+/* ─── STUDENT SELECTOR ──────────────────────────────── */
 #stu-sel{display:none;}
 .stab{padding:6px 15px;border-radius:99px;background:#f0ece4;font-size:0.81rem;cursor:pointer;font-weight:500;color:var(--navy);transition:all .2s;}
 .stab:hover,.stab.on{background:var(--navy);color:#fff;}
-.del-btn{padding:5px 9px;border-radius:99px;background:#fee;color:var(--red);border:1px solid #fcc;font-size:0.76rem;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.del-btn:hover{background:var(--red);color:#fff;}
+.del-btn{padding:5px 9px;border-radius:99px;background:#fee;color:var(--red);border:1px solid #fcc;font-size:0.76rem;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif;}
+.del-btn:hover{background:var(--red);color:#fff;border-color:var(--red);}
+.msg-tpl{padding:5px 12px;border-radius:99px;background:#fff;border:1px solid var(--border);font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--navy);transition:all .2s;}
+.msg-tpl:hover{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+/* ─── SCROLL TOP ─────────────────────────────────────── */
 #scroll-top{position:fixed;bottom:22px;right:22px;background:var(--navy);color:var(--gold);border:none;border-radius:50%;width:40px;height:40px;font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:200;}
+#scroll-down{position:fixed;top:70px;right:22px;background:var(--navy);color:var(--gold);border:none;border-radius:50%;width:40px;height:40px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:200;}
 #scroll-top.on{display:flex;}
-/* WHATSAPP CHAT */
-.chat-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;}
-.chat-header{padding:12px 16px;border-bottom:1px solid var(--border);background:#075e54;display:flex;align-items:center;gap:10px;}
-.chat-header-avatar{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.95rem;flex-shrink:0;}
-.chat-header-name{font-weight:600;font-size:0.92rem;color:#fff;}
-.chat-header-sub{font-size:0.72rem;color:rgba(255,255,255,0.7);}
-.chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:4px;min-height:300px;max-height:440px;background:#e5ddd5;}
-.chat-day-label{text-align:center;font-size:0.68rem;color:#555;background:rgba(255,255,255,0.9);border-radius:8px;padding:3px 10px;align-self:center;margin:6px 0;}
-.chat-bubble-wrap{display:flex;flex-direction:column;max-width:75%;}
-.chat-bubble-wrap.sent{align-self:flex-end;align-items:flex-end;}
-.chat-bubble-wrap.recv{align-self:flex-start;align-items:flex-start;}
-.chat-bubble{padding:7px 12px 7px 12px;border-radius:8px;font-size:0.87rem;line-height:1.5;word-break:break-word;position:relative;}
-.chat-bubble.sent{background:#dcf8c6;color:#111;border-top-right-radius:2px;}
-.chat-bubble.recv{background:#fff;color:#111;border-top-left-radius:2px;box-shadow:0 1px 1px rgba(0,0,0,0.1);}
-.chat-time{font-size:0.62rem;color:rgba(0,0,0,0.4);margin-top:2px;padding:0 2px;}
-.chat-input-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f0f0f0;border-top:1px solid var(--border);}
-.chat-input{flex:1;padding:10px 16px;border:none;border-radius:22px;font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.1);}
-.chat-send-btn{width:44px;height:44px;border-radius:50%;background:#075e54;color:#fff;border:none;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:background .2s;flex-shrink:0;}
-.chat-send-btn:hover{background:var(--gold);color:var(--navy);}
-.chat-empty{padding:40px 16px;text-align:center;color:var(--muted);font-size:0.84rem;}
-.chat-stu-list{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;}
-.chat-stu-item{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
-.chat-stu-item:hover,.chat-stu-item.on{background:#fffbf0;}
-.chat-stu-item.on{border-left:3px solid var(--gold);}
-.chat-stu-av{width:40px;height:40px;border-radius:50%;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.95rem;flex-shrink:0;}
-.chat-stu-name{font-weight:600;font-size:0.88rem;color:var(--navy);}
-.chat-stu-preview{font-size:0.74rem;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;}
-.chat-stu-badge{background:var(--green);color:#fff;border-radius:99px;font-size:0.64rem;padding:2px 7px;font-weight:700;margin-left:auto;flex-shrink:0;}
-/* NOTIF */
-#notif-banner{background:#fffbf0;border-bottom:1px solid #f5dfa0;padding:10px 20px;display:none;align-items:center;gap:12px;font-size:0.84rem;color:#444;position:fixed;top:52px;left:0;right:0;z-index:250;}
-#notif-banner.on{display:flex;}
-#notif-banner strong{color:var(--navy);}
-.nb-yes{padding:6px 14px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:background .2s;white-space:nowrap;}
-.nb-yes:hover{background:var(--gold);color:var(--navy);}
-.nb-no{background:none;border:none;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.8rem;margin-left:auto;}
-#notif-toast{position:fixed;top:70px;right:20px;max-width:340px;background:var(--navy);color:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 8px 32px rgba(0,0,0,0.28);z-index:9998;display:none;animation:slideIn .3s ease;border-left:4px solid var(--gold);}
-#notif-toast.on{display:flex;gap:12px;align-items:flex-start;}
-.nt-icon{font-size:1.3rem;flex-shrink:0;margin-top:1px;}
-.nt-body{flex:1;}
-.nt-title{font-weight:700;font-size:0.86rem;margin-bottom:3px;}
-.nt-body-text{font-size:0.78rem;color:rgba(255,255,255,0.7);line-height:1.5;}
-.nt-close{background:none;border:none;color:rgba(255,255,255,0.5);cursor:pointer;font-size:1rem;padding:0;flex-shrink:0;}
-.nt-close:hover{color:#fff;}
-@keyframes slideIn{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:none;}}
+#scroll-down.on{display:flex;}
+
+/* ─── MOBILE ─────────────────────────────────────────── */
 @media(max-width:800px){
   #mob-bar{display:flex;}
+  /* Sidebar hides off-screen on mobile */
   .sb{transform:translateX(-100%);}
   .sb.open{transform:translateX(0);}
+  /* Overlay darkens content when sidebar is open */
+  #sb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.52);z-index:350;cursor:pointer;}
   #sb-ov.on{display:block;}
-  .main{margin-left:0!important;}
-  .hero{padding:76px 16px 26px;}
+  .main{margin-left:0 !important;}
+  .hero{padding:66px 16px 26px;}
   .hero h1{font-size:1.65rem;}
   .ac{padding:16px 14px 72px;}
-  .mhero{padding:76px 16px 22px;}
+  .mhero{padding:66px 16px 22px;}
   .msum{grid-template-columns:1fr 1fr;padding:13px 14px;gap:9px;}
   .mcnt{padding:14px 14px 72px;}
   #appr-box{margin:0 14px;}
-  .mgrid-wrap{padding:13px 14px 0!important;}
+  #stu-sel{padding:0 14px 13px;}
+  .mgrid-wrap{padding:13px 14px 0 !important;}
   .mgrid{grid-template-columns:repeat(3,1fr);}
   .g2{grid-template-columns:1fr;}
-  .lbox{padding:28px 20px;}
+  .lbox{padding:28px 20px;border-radius:16px;}
   .tabs{flex-wrap:wrap;}
   .apr{flex-direction:column;align-items:flex-start;}
-  #notif-toast{top:60px;right:10px;left:10px;max-width:none;}
-  #notif-banner{top:52px;}
-  .chat-messages{max-height:300px;}
-  .chat-bubble-wrap{max-width:88%;}
 }
+
+/* ─── MESSAGING ──────────────────────────────────── */
+.msg-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.msg-toolbar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);background:#fafaf8;flex-wrap:wrap;}
+.msg-tabs{display:flex;gap:2px;background:#f0ece4;border-radius:7px;padding:2px;}
+.msg-tab{padding:6px 14px;border-radius:6px;border:none;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.8rem;color:var(--muted);font-weight:500;transition:all .2s;}
+.msg-tab.on{background:#fff;color:var(--navy);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+.msg-compose-btn{margin-left:auto;padding:7px 16px;background:var(--navy);color:#fff;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:0.8rem;cursor:pointer;font-weight:600;transition:background .2s;}
+.msg-compose-btn:hover{background:var(--gold);color:var(--navy);}
+.msg-list{min-height:100px;}
+.msg-row{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.msg-row:hover{background:#fafaf8;}
+.msg-row.unread{background:#fffbf0;}
+.msg-row.unread .msg-row-subject{font-weight:700;color:var(--navy);}
+.msg-avatar{width:34px;height:34px;border-radius:50%;background:var(--navy);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0;margin-top:2px;}
+.msg-row-meta{flex:1;min-width:0;}
+.msg-row-from{font-size:0.82rem;font-weight:600;color:var(--navy);}
+.msg-row-subject{font-size:0.82rem;color:#333;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.msg-row-preview{font-size:0.75rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
+.msg-row-time{font-size:0.72rem;color:var(--muted);flex-shrink:0;white-space:nowrap;padding-top:2px;}
+.msg-unread-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);flex-shrink:0;margin-top:6px;}
+.msg-dot-placeholder{width:8px;flex-shrink:0;}
+.msg-empty{padding:32px 16px;text-align:center;color:var(--muted);font-size:0.84rem;}
+.msg-detail-wrap{padding:22px;}
+.msg-back{display:inline-flex;align-items:center;gap:5px;font-size:0.8rem;color:var(--gold);cursor:pointer;margin-bottom:16px;font-weight:600;}
+.msg-detail-subject{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;color:var(--navy);margin-bottom:10px;}
+.msg-detail-meta{font-size:0.78rem;color:var(--muted);margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;}
+.msg-detail-body{font-size:0.88rem;line-height:1.8;color:#333;white-space:pre-wrap;margin-bottom:24px;}
+.msg-reply-box{border-top:1px solid var(--border);padding-top:16px;}
+.msg-reply-label{font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--navy);margin-bottom:8px;}
+.msg-compose-wrap{padding:22px;}
+.msg-flabel{font-size:0.72rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--navy);display:block;margin-bottom:5px;}
+.msg-input{width:100%;padding:9px 12px;border:2px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;transition:border .2s;background:#fff;margin-bottom:12px;}
+.msg-input:focus{border-color:var(--gold);}
+.msg-send-btn{padding:10px 22px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:600;cursor:pointer;transition:background .2s;}
+.msg-send-btn:hover{background:var(--gold);color:var(--navy);}
+
+/* On desktop, sidebar always visible */
 @media(min-width:801px){
-  .sb{transform:none!important;}
-  #mob-bar{display:none!important;}
-  #sb-ov{display:none!important;}
-  #notif-banner{top:0;left:var(--sw);}
+  .sb{transform:none !important;}
+  #mob-bar{display:none !important;}
+  #sb-ov{display:none !important;}
 }
 </style>
 </head>
 <body>
-<div id="notif-banner"><span>🔔</span><div><strong>Enable notifications</strong> — get daily reminders and instant alerts when your mentor sends feedback.</div><button class="nb-yes" onclick="requestPushPermission()">Enable</button><button class="nb-no" onclick="dismissNotifBanner()">Not now</button></div>
-<div id="notif-toast"><div class="nt-icon">📩</div><div class="nt-body"><div class="nt-title" id="nt-title">New notification</div><div class="nt-body-text" id="nt-body">You have a new update.</div></div><button class="nt-close" onclick="hideToast()">✕</button></div>
+
+<!-- ════════════ UPDATE BANNER ════════════ -->
 <div id="update-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#0d1b2a;color:#fff;padding:12px 20px;align-items:center;justify-content:space-between;gap:12px;z-index:9999;box-shadow:0 -4px 20px rgba(0,0,0,0.3);">
-  <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:1.2rem;">🚀</span><div><div style="font-weight:600;font-size:0.9rem;">New version available</div><div style="font-size:0.78rem;color:rgba(255,255,255,0.55);">Tap Update to get the latest features</div></div></div>
-  <div style="display:flex;gap:8px;flex-shrink:0;"><button onclick="doUpdate()" style="padding:8px 18px;background:#e8a020;color:#0d1b2a;border:none;border-radius:7px;font-weight:700;font-size:0.85rem;cursor:pointer;">Update now</button><button onclick="document.getElementById('update-banner').style.display='none'" style="padding:8px 12px;background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:7px;font-size:0.85rem;cursor:pointer;">Later</button></div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="font-size:1.2rem;">🚀</span>
+    <div>
+      <div style="font-weight:600;font-size:0.9rem;">New version available</div>
+      <div style="font-size:0.78rem;color:rgba(255,255,255,0.55);">Tap Update to get the latest features</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0;">
+    <button onclick="doUpdate()" style="padding:8px 18px;background:#e8a020;color:#0d1b2a;border:none;border-radius:7px;font-weight:700;font-size:0.85rem;cursor:pointer;">Update now</button>
+    <button onclick="document.getElementById('update-banner').style.display='none'" style="padding:8px 12px;background:rgba(255,255,255,0.1);color:#fff;border:none;border-radius:7px;font-size:0.85rem;cursor:pointer;">Later</button>
+  </div>
 </div>
-<div id="screen-loading"><div class="plane">✈</div><p>Loading…</p></div>
+
+<!-- ════════════ LOADING ════════════ -->
+<div id="screen-loading">
+  <div class="plane">✈</div>
+  <p>Loading…</p>
+</div>
+
+<!-- ════════════ LOGIN ════════════ -->
 <div id="screen-login">
   <div class="lbox">
-    <div class="llogo"><div class="llogo-icon">✈</div><div class="llogo-text">Path <span>Abroad</span></div></div>
+    <div class="llogo">
+      <div class="llogo-icon">✈</div>
+      <div class="llogo-text">Path <span>Abroad</span></div>
+    </div>
     <div class="lsub">Study Abroad Mentorship Platform</div>
-    <div class="ltabs"><button class="ltab on" id="tab-si" onclick="showForm('si')">Sign In</button><button class="ltab" id="tab-su" onclick="showForm('su')">Sign Up</button></div>
+    <div class="ltabs">
+      <button class="ltab on" id="tab-si" onclick="showForm('si')">Sign In</button>
+      <button class="ltab"    id="tab-su" onclick="showForm('su')">Sign Up</button>
+    </div>
+    <!-- Sign In -->
     <div class="lform on" id="form-si">
-      <label class="fl">Email Address</label><input class="fi" id="si-em" type="email" placeholder="Your email"/>
+      <label class="fl">Email Address</label>
+      <input class="fi" id="si-em" type="email" placeholder="Your email"/>
       <label class="fl">Password</label>
-      <div style="position:relative;"><input class="fi" id="si-pw" type="password" placeholder="Your password" style="margin-bottom:0;padding-right:44px;"/><button type="button" onclick="togglePw('si-pw',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;line-height:1;">︶</button></div>
+      <div style="position:relative;">
+        <input class="fi" id="si-pw" type="password" placeholder="Your password" style="margin-bottom:0;padding-right:44px;"/>
+        <button type="button" onclick="togglePw('si-pw',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;line-height:1;" title="Show/hide password">👁</button>
+      </div>
       <div style="margin-bottom:13px;"></div>
       <button class="fbtn" id="si-btn" onclick="doSignIn()">Sign In</button>
       <div class="flink" onclick="doReset()">Forgot password? Send reset email</div>
       <div class="ferr" id="si-err"></div>
     </div>
+    <!-- Sign Up -->
     <div class="lform" id="form-su">
       <div class="fnote">Your account will be reviewed and approved by your mentor before you can access the guide.</div>
-      <label class="fl">Full Name</label><input class="fi" id="su-nm" type="text" placeholder="e.g. Amara Nwosu"/>
-      <label class="fl">Email Address</label><input class="fi" id="su-em" type="email" placeholder="Your email"/>
+      <label class="fl">Full Name</label>
+      <input class="fi" id="su-nm" type="text" placeholder="e.g. Amara Nwosu"/>
+      <label class="fl">Email Address</label>
+      <input class="fi" id="su-em" type="email" placeholder="Your email"/>
       <label class="fl">Password</label>
-      <div style="position:relative;"><input class="fi" id="su-pw" type="password" placeholder="At least 6 characters" style="margin-bottom:0;padding-right:44px;"/><button type="button" onclick="togglePw('su-pw',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;line-height:1;">︶</button></div>
+      <div style="position:relative;">
+        <input class="fi" id="su-pw" type="password" placeholder="At least 6 characters" style="margin-bottom:0;padding-right:44px;"/>
+        <button type="button" onclick="togglePw('su-pw',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;line-height:1;" title="Show/hide password">👁</button>
+      </div>
       <div style="margin-bottom:13px;"></div>
       <button class="fbtn" id="su-btn" onclick="doSignUp()">Sign Up</button>
       <div class="ferr" id="su-err"></div>
     </div>
   </div>
 </div>
+
+<!-- ════════════ PENDING ════════════ -->
 <div id="screen-pending">
   <div class="pbox">
-    <div class="icon" id="pend-icon">⏳</div><h2 id="pend-title">Waiting for Approval</h2>
+    <div class="icon" id="pend-icon">⏳</div>
+    <h2 id="pend-title">Waiting for Approval</h2>
     <p>Your account (<strong id="pend-em"></strong>) has been created and is under review.</p>
-    <div id="pend-bar" onclick="pendingTap()" style="margin:24px auto;padding:14px 28px;background:#fff8ed;border-radius:99px;border:2px solid #e8a020;display:inline-block;cursor:pointer;user-select:none;"><span id="pend-bar-text" style="color:#e8a020;font-weight:600;font-size:0.95rem;">⏳ Check back soon…</span></div>
+    <div id="pend-bar" onclick="pendingTap()" style="margin:24px auto;padding:14px 28px;background:#fff8ed;border-radius:99px;border:2px solid #e8a020;display:inline-block;transition:all .6s ease;cursor:pointer;user-select:none;">
+      <span id="pend-bar-text" style="color:#e8a020;font-weight:600;font-size:0.95rem;letter-spacing:0.03em;">⏳ Check back soon…</span>
+    </div>
     <p id="pend-sub" style="font-size:0.82rem;color:#aaa;">This page updates automatically once you are approved.</p>
     <p id="pend-tap-hint" style="font-size:0.72rem;color:transparent;margin-top:6px;">.</p>
   </div>
 </div>
-<div id="mob-bar"><button id="mob-btn" onclick="toggleSb()">☰</button><div class="mob-ml">Path <span>Abroad</span> ✈</div></div>
+
+<!-- ════════════ MOBILE BAR ════════════ -->
+<div id="mob-bar">
+  <button id="mob-btn" onclick="toggleSb()">☰</button>
+  <div class="mob-ml">Path <span>Abroad</span> ✈</div>
+</div>
 <div id="sb-ov" onclick="closeSb()"></div>
 
+<!-- ════════════ STUDENT SCREEN ════════════ -->
 <div id="screen-student">
   <nav class="sb" id="sb-s">
-    <div class="sb-hd"><div class="sb-lw"><div class="sb-li">✈</div><div><div class="sb-lt">Path <span>Abroad</span></div><div class="sb-tg">Your Study Abroad Journey</div></div></div></div>
-    <div class="sb-pg"><label>Your Progress</label><div class="sb-pc" id="s-pct">0%</div><div class="sb-ps" id="s-sub">0 / 31 tasks done</div><div class="pw"><div class="pb" id="s-bar"></div></div></div>
+    <div class="sb-hd">
+      <div class="sb-lw">
+        <div class="sb-li">✈</div>
+        <div>
+          <div class="sb-lt">Path <span>Abroad</span></div>
+          <div class="sb-tg">Your Study Abroad Journey</div>
+        </div>
+      </div>
+    </div>
+    <div class="sb-pg">
+      <label>Your Progress</label>
+      <div class="sb-pc" id="s-pct">0%</div>
+      <div class="sb-ps" id="s-sub">0 / 31 tasks done</div>
+      <div class="pw"><div class="pb" id="s-bar"></div></div>
+    </div>
     <nav>
-      <div class="ns">Start Here</div><a class="ni" href="#overview">🏠 Overview</a><a class="ni" href="#timeline">📅 6-Month Roadmap</a>
-      <div class="ns">Modules</div><a class="ni" href="#m1">🎯 M1: Know Yourself</a><a class="ni" href="#m2">🔍 M2: Find Programmes</a><a class="ni" href="#m3">👨‍🏫 M3: Find Professors</a><a class="ni" href="#m4">✉️ M4: Email Professors</a><a class="ni" href="#m5">💰 M5: Scholarships</a><a class="ni" href="#m6">📄 M6: Documents</a><a class="ni" href="#m7">✍️ M7: SOP Writing</a><a class="ni" href="#m8">🚀 M8: Apply</a><a class="ni" href="#m9">🛂 M9: Visa</a>
-      <div class="ns">My Work</div><a class="ni" href="#tasks">✅ Task List</a><a class="ni" href="#resources">🔗 Resources</a>
-      <a class="ni" href="#messages">✉️ Messages <span id="s-msg-badge" style="display:none;background:#e74c3c;color:#fff;border-radius:99px;font-size:0.6rem;padding:1px 6px;font-weight:700;margin-left:4px;vertical-align:middle;"></span></a>
+      <div class="ns">Start Here</div>
+      <a class="ni" href="#overview">🏠 Overview</a>
+      <a class="ni" href="#timeline">📅 6-Month Roadmap</a>
+      <div class="ns">Modules</div>
+      <a class="ni" href="#m1">🎯 M1: Know Yourself</a>
+      <a class="ni" href="#m2">🔍 M2: Find Programmes</a>
+      <a class="ni" href="#m3">👨‍🏫 M3: Find Professors</a>
+      <a class="ni" href="#m4">✉️ M4: Email Professors</a>
+      <a class="ni" href="#m5">💰 M5: Scholarships</a>
+      <a class="ni" href="#m6">📄 M6: Documents</a>
+      <a class="ni" href="#m7">✍️ M7: SOP Writing</a>
+      <a class="ni" href="#m8">🚀 M8: Apply</a>
+      <a class="ni" href="#m9">🛂 M9: Visa</a>
+      <div class="ns">My Work</div>
+      <a class="ni" href="#tasks">✅ Task List</a>
+      <a class="ni" href="#resources">🔗 Resources</a>
+      <a class="ni" href="#messages" onclick="if(me){sMsgTab('inbox');}">✉️ Messages <span id="s-msg-badge" style="display:none;background:#e74c3c;color:#fff;border-radius:99px;font-size:0.6rem;padding:1px 6px;font-weight:700;margin-left:4px;vertical-align:middle;"></span></a>
     </nav>
-    <div class="sb-ft"><div class="sb-un" id="s-name">Student</div><div class="sb-ur">Student</div><button class="sb-lo" onclick="doSignOut()">Sign Out</button></div>
+    <div class="sb-ft">
+      <div class="sb-un" id="s-name">Student</div>
+      <div class="sb-ur">Student</div>
+      <button class="sb-lo" onclick="doSignOut()">Sign Out</button>
+    </div>
   </nav>
   <div class="main">
-    <div class="hero"><div class="ey">Your Personal Study Abroad Roadmap</div><h1>Your Roadmap to <em>Study Abroad</em></h1><p>Your personal step-by-step guide to getting into a funded university in Canada, Australia, or Europe.</p><div class="hst"><div><div class="n">9</div><div class="l">Modules</div></div><div><div class="n">6</div><div class="l">Months</div></div><div><div class="n">31</div><div class="l">Tasks</div></div><div><div class="n">100%</div><div class="l">Free Paths</div></div></div></div>
+    <div class="hero">
+      <div class="ey">Your Personal Study Abroad Roadmap</div>
+      <h1>Your Roadmap to <em>Study Abroad</em></h1>
+      <p>Your personal step-by-step guide to getting into a funded university in Canada, Australia, or Europe — from today until you land.</p>
+      <div class="hst">
+        <div><div class="n">9</div><div class="l">Modules</div></div>
+        <div><div class="n">6</div><div class="l">Months</div></div>
+        <div><div class="n">31</div><div class="l">Tasks</div></div>
+        <div><div class="n">100%</div><div class="l">Free Paths</div></div>
+      </div>
+    </div>
     <div class="ac">
-      <div class="sec" id="overview"><div class="sh"><div class="sb2">🏠</div><div><h2>Welcome — Read This First</h2></div></div><div class="card"><h3>Who This Is For</h3><p>You are a graduate or final-year undergraduate who wants to study abroad. <strong>Scholarships and funded programmes</strong> are the plan.</p></div><div class="ib"><strong>Good news:</strong> Canada, Germany, Norway, and some UK universities offer <strong>fully funded</strong> graduate programmes. Be strategic.</div><div class="g2"><div class="card"><h3>How to Use This Guide</h3><p>Go through each Module in order. Check off tasks and add notes — your mentor sees everything live.</p></div><div class="card"><h3>Your Mentor Is Watching 👀</h3><p>Every task you check, every note you write — your mentor sees it in real time.</p></div></div><div class="wb"><strong>Key rule:</strong> Only apply to <em>funded</em> pathways.</div></div>
-      <div class="sec" id="timeline"><div class="sh"><div class="sb2">📅</div><div><h2>Your 6-Month Roadmap</h2></div></div><div class="tl"><div class="tli"><div class="tld"></div><div class="tlm">Month 1 — Now</div><div class="tlt">🔍 Research & Self-Assessment</div><div class="tld2">Build your academic profile, shortlist universities, apply for passport.</div><ul><li>Complete Module 1</li><li>Apply for passport immediately</li><li>Shortlist 10–15 target universities</li></ul></div><div class="tli"><div class="tld"></div><div class="tlm">Month 2</div><div class="tlt">👨‍🏫 Outreach & Language Test</div><div class="tld2">Email professors, register for IELTS/TOEFL.</div></div><div class="tli"><div class="tld"></div><div class="tlm">Month 3</div><div class="tlt">📄 Document Preparation</div><div class="tld2">Gather all documents. Write first SOP draft.</div></div><div class="tli"><div class="tld"></div><div class="tlm">Month 4</div><div class="tlt">✍️ Scholarships & Final Drafts</div><div class="tld2">Submit scholarship applications. Finalise SOP.</div></div><div class="tli"><div class="tld"></div><div class="tlm">Month 5</div><div class="tlt">🚀 University Applications</div><div class="tld2">Submit applications to 5–8 universities.</div></div><div class="tli"><div class="tld"></div><div class="tlm">Month 6</div><div class="tlt">🛂 Await Decisions & Visa Prep</div><div class="tld2">Accept a funded offer. Begin visa process.</div></div></div></div>
-      <div class="sec" id="m1"><div class="sh"><div class="sb2">🎯</div><div><h2>Module 1: Know Yourself First</h2></div></div><div class="g2"><div class="card"><h3>🎓 CGPA</h3><p>Most funded MSc programmes want <strong>3.0+/5.0</strong>.</p></div><div class="card"><h3>💻 Projects</h3><p>List every coding project, FYP, or research.</p></div><div class="card"><h3>📖 Publications</h3><p>Your FYP topic can become your research proposal.</p></div><div class="card"><h3>🌍 English Test</h3><p><strong>IELTS 6.5+</strong> or <strong>TOEFL iBT 90+</strong>.</p></div></div><div class="ib"><strong>Task:</strong> Write a 1-page Academic Profile in Google Doc and share the link with your mentor.</div></div>
-      <div class="sec" id="m2"><div class="sh"><div class="sb2">🔍</div><div><h2>Module 2: Find the Right Programmes</h2></div></div><div class="tabs"><button class="tb on" onclick="stab(this,'m2ca')">🇨🇦 Canada</button><button class="tb" onclick="stab(this,'m2de')">🇩🇪 Germany</button><button class="tb" onclick="stab(this,'m2au')">🇦🇺 Australia</button><button class="tb" onclick="stab(this,'m2no')">🇳🇴 Norway</button></div><div class="tp on" id="m2ca"><div class="card"><h3>Canada — Research-Based MSc/PhD</h3><p>Your supervisor funds you — stipend and tuition waiver.</p><ul><li>Memorial University of Newfoundland</li><li>University of Manitoba</li><li>University of Alberta</li><li>Dalhousie University</li><li>University of Waterloo</li></ul></div><div class="ib"><strong>Search:</strong> <a href="https://www.findamasters.com" target="_blank">findamasters.com</a></div></div><div class="tp" id="m2de"><div class="card"><h3>Germany — Near-Zero Tuition</h3><p>~€150–350/semester. DAAD scholarships cover living costs.</p></div></div><div class="tp" id="m2au"><div class="card"><h3>Australia — Research Training Program</h3><p>RTP waives tuition for international PhD students.</p></div></div><div class="tp" id="m2no"><div class="card"><h3>Norway & Nordic — Free Tuition</h3><p>Norway's public universities charge no tuition for anyone.</p></div></div></div>
-      <div class="sec" id="m3"><div class="sh"><div class="sb2">👨‍🏫</div><div><h2>Module 3: Find Professors & Read Research</h2></div></div><div class="card"><h3>Why This Matters</h3><p>A professor must agree to supervise you before you are admitted.</p></div><div class="card"><h3>How to Find Them</h3><ul><li><strong>Google Scholar:</strong> Search your topic</li><li><strong>ResearchGate</strong></li><li><strong>University CS department pages</strong></li><li><strong>IEEE Xplore / arXiv / ACM</strong></li></ul></div><div class="ib"><strong>Free papers:</strong> <a href="https://sci-hub.se" target="_blank">Sci-Hub.se</a> or <a href="https://arxiv.org" target="_blank">arXiv.org</a>.</div></div>
-      <div class="sec" id="m4"><div class="sh"><div class="sb2">✉️</div><div><h2>Module 4: How to Email a Professor</h2></div></div><div class="card"><h3>The Golden Rules</h3><ul><li>Keep it short — 3–4 paragraphs</li><li>Personalise every email — mention their specific paper by exact title</li><li>State your CGPA clearly. Attach your CV.</li><li>Follow up once after 2 weeks if no reply.</li></ul></div><div class="elbl">📧 Professor Email Template</div><div class="etpl" id="etpl"><button class="cpb" onclick="copyEmail()">Copy</button>Subject: Prospective Graduate Student — [Research Area] — [Your Name]
+
+      <div class="sec" id="overview">
+        <div class="sh"><div class="sb2">🏠</div><div><h2>Welcome — Read This First</h2><p>What this guide is and how to use it</p></div></div>
+        <div class="card"><h3>Who This Is For</h3><p>You are a graduate or final-year undergraduate who wants to study abroad for a Master's or PhD. Your family income is limited, so <strong>scholarships and funded programmes</strong> are not a bonus — they are the plan. This guide shows you it is entirely possible.</p></div>
+        <div class="ib"><strong>Good news:</strong> Canada (research MSc/PhD), Germany, Norway, and some UK universities offer <strong>fully funded</strong> graduate programmes. You don't need to be rich. You need to be strategic.</div>
+        <div class="g2">
+          <div class="card"><h3>How to Use This Guide</h3><p>Go through each Module in order. Check off tasks and add notes — your mentor sees everything live and will give you feedback.</p></div>
+          <div class="card"><h3>Your Mentor Is Watching 👀</h3><p>Every task you check, every note you write — your mentor sees it in real time. Be honest and complete your tasks before your review sessions.</p></div>
+        </div>
+        <div class="wb"><strong>Key rule:</strong> Only apply to <em>funded</em> pathways. Do not apply to self-funded programmes.</div>
+      </div>
+
+      <div class="sec" id="timeline">
+        <div class="sh"><div class="sb2">📅</div><div><h2>Your 6-Month Roadmap</h2><p>A realistic, phased plan from today to application</p></div></div>
+        <div class="tl">
+          <div class="tli"><div class="tld"></div><div class="tlm">Month 1 — Now</div><div class="tlt">🔍 Research & Self-Assessment</div><div class="tld2">Build your academic profile, shortlist universities, apply for passport.</div><ul><li>Complete Module 1</li><li>Apply for passport immediately</li><li>Request unofficial transcripts</li><li>Shortlist 10–15 target universities</li></ul></div>
+          <div class="tli"><div class="tld"></div><div class="tlm">Month 2</div><div class="tlt">👨‍🏫 Outreach & Language Test</div><div class="tld2">Email professors, register for IELTS/TOEFL, research scholarships.</div><ul><li>Email 15–20 professors</li><li>Register for IELTS/TOEFL and start studying</li><li>Identify 5+ scholarship deadlines</li></ul></div>
+          <div class="tli"><div class="tld"></div><div class="tlm">Month 3</div><div class="tlt">📄 Document Preparation</div><div class="tld2">Gather all documents. Write first SOP draft.</div><ul><li>Official transcripts + recommendation letters</li><li>Take IELTS/TOEFL exam</li><li>First SOP draft sent to mentor for review</li></ul></div>
+          <div class="tli"><div class="tld"></div><div class="tlm">Month 4</div><div class="tlt">✍️ Scholarships & Final Drafts</div><div class="tld2">Submit scholarship applications. Finalise SOP.</div></div>
+          <div class="tli"><div class="tld"></div><div class="tlm">Month 5</div><div class="tlt">🚀 University Applications</div><div class="tld2">Submit applications to 5–8 universities.</div></div>
+          <div class="tli"><div class="tld"></div><div class="tlm">Month 6</div><div class="tlt">🛂 Await Decisions & Visa Prep</div><div class="tld2">Accept a funded offer (share with your mentor first). Begin visa process.</div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="m1">
+        <div class="sh"><div class="sb2">🎯</div><div><h2>Module 1: Know Yourself First</h2><p>Build your academic profile before anything else</p></div></div>
+        <div class="g2">
+          <div class="card"><h3>🎓 CGPA</h3><p>Most funded MSc programmes want <strong>3.0+/5.0</strong>. A lower GPA can be overcome with strong projects and a great SOP.</p></div>
+          <div class="card"><h3>💻 Projects</h3><p>List every coding project, FYP, or research — no matter how small. These matter enormously for postgraduate applications.</p></div>
+          <div class="card"><h3>📖 Publications</h3><p>Any paper, even a conference poster? If not, your FYP topic can become your research proposal. Write the topic down now.</p></div>
+          <div class="card"><h3>🌍 English Test</h3><p>Most universities require <strong>IELTS 6.5+</strong> or <strong>TOEFL iBT 90+</strong>. Plan your test for Month 2–3.</p></div>
+        </div>
+        <div class="ib"><strong>Task:</strong> Open a Google Doc. Write a 1-page Academic Profile — CGPA, all projects, FYP topic, awards, research interests. Share the link with your mentor in your task note below.</div>
+      </div>
+
+      <div class="sec" id="m2">
+        <div class="sh"><div class="sb2">🔍</div><div><h2>Module 2: Find the Right Programmes</h2><p>Research universities and identify the right fit</p></div></div>
+        <div class="tabs">
+          <button class="tb on" onclick="stab(this,'m2ca')">🇨🇦 Canada</button>
+          <button class="tb" onclick="stab(this,'m2de')">🇩🇪 Germany</button>
+          <button class="tb" onclick="stab(this,'m2au')">🇦🇺 Australia</button>
+          <button class="tb" onclick="stab(this,'m2no')">🇳🇴 Norway</button>
+        </div>
+        <div class="tp on" id="m2ca"><div class="card"><h3>Canada — Research-Based MSc/PhD (Funded)</h3><p>The best route is a <strong>research-based (thesis) Master's</strong>. Your supervisor funds you — you receive a stipend and tuition waiver.</p><ul><li><strong>Memorial University of Newfoundland</strong> — lowest tuition, very international-friendly</li><li><strong>University of Manitoba</strong> — lower cost, active funding</li><li><strong>University of Alberta</strong> — strong AI research</li><li><strong>Dalhousie University</strong> — funded research positions</li><li><strong>University of Waterloo</strong> — world-class CS</li></ul></div><div class="ib"><strong>Search:</strong> <a href="https://www.findamasters.com" target="_blank">findamasters.com</a> → filter Canada + CS + funded.</div></div>
+        <div class="tp" id="m2de"><div class="card"><h3>Germany — Near-Zero Tuition</h3><p>Public universities charge only ~€150–350/semester. Many are fully in English. DAAD scholarships can cover living costs.</p><ul><li>TU Munich, TU Berlin, KIT Karlsruhe, University of Stuttgart</li><li>Search: <a href="https://www.daad.de/en/" target="_blank">daad.de</a></li></ul></div></div>
+        <div class="tp" id="m2au"><div class="card"><h3>Australia — Research Degrees + Scholarships</h3><p>The <strong>Research Training Program (RTP)</strong> waives tuition for international PhD students. Check Monash, University of Melbourne, ANU, UNSW, UQ.</p></div></div>
+        <div class="tp" id="m2no"><div class="card"><h3>Norway & Nordic — Free Tuition</h3><p>Norway's public universities charge <strong>no tuition</strong> for anyone. Also consider Sweden (KTH), Finland (Aalto), Denmark (DTU).</p></div></div>
+      </div>
+
+      <div class="sec" id="m3">
+        <div class="sh"><div class="sb2">👨‍🏫</div><div><h2>Module 3: Find Professors & Read Research</h2><p>The most important module for research-based programmes</p></div></div>
+        <div class="card"><h3>Why This Matters</h3><p>For funded research degrees, a professor must agree to supervise you <em>before</em> you are admitted. Without a willing supervisor, your application will likely be rejected even with excellent grades.</p></div>
+        <div class="card"><h3>How to Find Them</h3><ul><li><strong>Google Scholar:</strong> Search your topic → click an author name → see their university and papers</li><li><strong>ResearchGate:</strong> Search by topic, see recent publications</li><li><strong>University CS department pages:</strong> Look for "Prospective Students" links</li><li><strong>IEEE Xplore / arXiv / ACM:</strong> Find papers you like, look up the corresponding author</li></ul></div>
+        <div class="card"><h3>How to Read Their Paper</h3><p>Read at least one paper from the last 2 years. Focus on: <strong>Abstract</strong> (what problem?), <strong>Introduction</strong> (why does it matter?), <strong>Future Work</strong> (what do they plan next? — this is what you offer to continue).</p></div>
+        <div class="ib"><strong>Free papers:</strong> <a href="https://sci-hub.se" target="_blank">Sci-Hub.se</a> (paste the DOI) or <a href="https://arxiv.org" target="_blank">arXiv.org</a>.</div>
+      </div>
+
+      <div class="sec" id="m4">
+        <div class="sh"><div class="sb2">✉️</div><div><h2>Module 4: How to Email a Professor</h2><p>The email that can change your life — done right</p></div></div>
+        <div class="card"><h3>The Golden Rules</h3><ul><li>Keep it <strong>short</strong> — 3–4 paragraphs maximum</li><li><strong>Personalise every email</strong> — mention their specific paper by exact title</li><li>Show you <strong>read their work</strong> — one specific sentence about what you found compelling</li><li>State your CGPA clearly. Attach your CV. Use your university email.</li><li>Follow up once after 2 weeks if no reply. Never more.</li></ul></div>
+        <div class="elbl">📧 Professor Email Template</div>
+        <div class="etpl" id="etpl"><button class="cpb" onclick="copyEmail()">Copy</button>Subject: Prospective Graduate Student — [Research Area] — [Your Name]
 
 Dear Professor [Last Name],
 
-I am [Your Name], a final-year Computer Science student at [Your University], graduating in [Month Year] with a CGPA of [X/5.0]. I am writing to inquire about PhD/MSc research opportunities starting [e.g. September 2026].
+I am [Your Name], a final-year Computer Science student at the [Your University], graduating in [Month Year] with a CGPA of [X/5.0]. I am writing to inquire about PhD/MSc research opportunities in your group starting [e.g. September 2026].
 
-I recently read your paper "[Exact Paper Title]" ([Year]), and I found your approach to [specific aspect] particularly compelling.
+I recently read your paper "[Exact Paper Title]" ([Journal/Conference, Year]), and I found your approach to [specific aspect] particularly compelling. I am especially interested in extending this toward [your specific angle or their "future work"].
 
-My background includes [1–2 sentences on your FYP]. I believe this aligns well with your group's research direction.
+My background includes [1–2 sentences on your FYP or relevant project]. I believe this aligns well with your group's research direction.
 
-I have attached my CV. Thank you for your time.
+I have attached my CV. If you are currently accepting students, I would be glad to provide transcripts or a research statement at your convenience.
+
+Thank you for your time.
 
 Sincerely,
-[Your Full Name] | [Your University] | [Email]</div><div class="wb"><strong>Never:</strong> "I came to know about you through the internet." | Ask about funding in the first email.</div></div>
-      <div class="sec" id="m5"><div class="sh"><div class="sb2">💰</div><div><h2>Module 5: Scholarships for Nigerians</h2></div></div><div class="g2"><div class="card"><h3>🌍 Mastercard Foundation</h3><p>Covers tuition, living, and travel for African students.</p><div class="rl"><a class="rp" href="https://mastercardfdn.org/all/scholars/" target="_blank">Apply</a></div></div><div class="card"><h3>🇩🇪 DAAD</h3><p>Full scholarships for African students.</p><div class="rl"><a class="rp" href="https://www.daad.de/en/" target="_blank">DAAD Portal</a></div></div><div class="card"><h3>🇨🇦 Vanier Canada</h3><p>$50,000 CAD/year for 3 years.</p><div class="rl"><a class="rp" href="https://vanier.gc.ca" target="_blank">Vanier CGS</a></div></div><div class="card"><h3>🌐 Commonwealth</h3><p>Fully funded to study in the UK.</p><div class="rl"><a class="rp" href="https://cscuk.fcdo.gov.uk/scholarships/" target="_blank">Apply</a></div></div><div class="card"><h3>🎓 University Funding</h3><p>Always ask about teaching/research assistantships.</p></div><div class="card"><h3>🔎 Find More</h3><div class="rl"><a class="rp" href="https://scholarshipdb.net" target="_blank">ScholarshipDB</a><a class="rp" href="https://www.scholars4dev.com" target="_blank">Scholars4Dev</a></div></div></div></div>
-      <div class="sec" id="m6"><div class="sh"><div class="sb2">📄</div><div><h2>Module 6: Documents Checklist</h2></div></div><div class="wb"><strong>⚠️ Start passport and transcripts today.</strong> Nigerian passports take 6–12 weeks.</div><div class="card"><h3>📘 International Passport</h3><div class="rl"><a class="rp" href="https://passport.immigration.gov.ng" target="_blank">NIS Portal</a></div></div><div class="card"><h3>📋 Full Documents List</h3><ul><li><strong>Official transcripts</strong> — sealed copies</li><li><strong>Academic CV</strong></li><li><strong>3 Letters of Recommendation</strong> — give 6 weeks notice</li><li><strong>English Language Certificate</strong></li><li><strong>Birth Certificate</strong></li><li><strong>Research Proposal</strong> — for PhD</li><li><strong>Statement of Purpose (SOP)</strong></li></ul></div></div>
-      <div class="sec" id="m7"><div class="sh"><div class="sb2">✍️</div><div><h2>Module 7: Writing Your SOP</h2></div></div><div class="card"><h3>SOP Structure</h3><ul><li><strong>Para 1 — Hook:</strong> Open with a specific CS problem</li><li><strong>Para 2 — Background:</strong> Degree, CGPA, projects</li><li><strong>Para 3 — Research Interest</strong></li><li><strong>Para 4 — Why This University/Professor:</strong> Name them. Mention their paper.</li><li><strong>Para 5 — Future Goals</strong></li></ul></div><div class="ib"><strong>Task:</strong> Write a first draft and paste the Google Doc link in your task note.</div><div class="wb"><strong>Avoid:</strong> "I have always been passionate since childhood." | Same SOP for every university.</div></div>
-      <div class="sec" id="m8"><div class="sh"><div class="sb2">🚀</div><div><h2>Module 8: Submitting Applications</h2></div></div><div class="card"><h3>How Many?</h3><p>Apply to <strong>5–8 universities</strong>: 2 stretch, 3–4 target, 2 safety.</p></div><div class="card"><h3>Per-University Checklist</h3><ul><li>Create account on application portal</li><li>Upload transcripts + CV + customised SOP</li><li>Enter referees' contact details</li><li>Submit before the deadline</li></ul></div></div>
-      <div class="sec" id="m9"><div class="sh"><div class="sb2">🛂</div><div><h2>Module 9: Visa & Pre-Departure</h2></div></div><div class="wb"><strong>Never accept an offer without sharing it with your mentor first.</strong></div><div class="card"><h3>Canadian Study Permit</h3><ul><li>Apply on the IRCC portal — allow 2–4 months</li></ul><div class="rl"><a class="rp" href="https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada.html" target="_blank">IRCC Portal</a></div></div><div class="g2"><div class="card"><h3>🏠 Housing</h3><p>Apply for on-campus housing immediately after accepting.</p></div><div class="card"><h3>✈️ Arrival</h3><p>Book your flight only after visa is confirmed.</p></div></div></div>
-      <div class="sec" id="tasks"><div class="sh"><div class="sb2">✅</div><div><h2>My Task List</h2><p>Check off tasks and add notes — your mentor sees your progress live</p></div></div><div id="task-list"></div></div>
-      <div class="sec" id="resources"><div class="sh"><div class="sb2">🔗</div><div><h2>Essential Resources</h2></div></div><div class="g2"><div class="card"><h3>🔍 University Search</h3><div class="rl"><a class="rp" href="https://www.findamasters.com" target="_blank">FindAMasters</a><a class="rp" href="https://www.mastersportal.eu" target="_blank">MastersPortal</a></div></div><div class="card"><h3>📄 Research Papers</h3><div class="rl"><a class="rp" href="https://scholar.google.com" target="_blank">Google Scholar</a><a class="rp" href="https://sci-hub.se" target="_blank">Sci-Hub</a><a class="rp" href="https://arxiv.org" target="_blank">arXiv</a></div></div><div class="card"><h3>💰 Scholarships</h3><div class="rl"><a class="rp" href="https://mastercardfdn.org/all/scholars/" target="_blank">Mastercard</a><a class="rp" href="https://www.daad.de/en/" target="_blank">DAAD</a><a class="rp" href="https://cscuk.fcdo.gov.uk/scholarships/" target="_blank">Commonwealth</a></div></div><div class="card"><h3>🇨🇦 Canada Visa</h3><div class="rl"><a class="rp" href="https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada.html" target="_blank">IRCC</a></div></div><div class="card"><h3>📘 Passport</h3><div class="rl"><a class="rp" href="https://passport.immigration.gov.ng" target="_blank">NIS Portal</a></div></div><div class="card"><h3>🎓 English Tests</h3><div class="rl"><a class="rp" href="https://www.ielts.org" target="_blank">IELTS</a><a class="rp" href="https://www.ets.org/toefl" target="_blank">TOEFL</a></div></div></div></div>
-      <div class="sec" id="messages"><div class="sh"><div class="sb2">✉️</div><div><h2>Messages</h2><p>Your conversation with your mentor</p></div></div>
-        <div class="chat-wrap"><div class="chat-header"><div class="chat-header-avatar">M</div><div><div class="chat-header-name">Your Mentor</div><div class="chat-header-sub">Path Abroad</div></div></div><div class="chat-messages" id="s-chat-messages"><div class="chat-empty">Loading messages…</div></div><div class="chat-input-row"><input class="chat-input" id="s-chat-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendSChat()"/><button class="chat-send-btn" onclick="sendSChat()">➤</button></div></div>
+[Your Full Name]
+[Your University] | [Your Degree]
+[Email] | [LinkedIn or GitHub]</div>
+        <div class="wb"><strong>Never say:</strong> "I came to know about you through the internet." | "I am hardworking and dedicated." | Copy-paste the same email to everyone. | Ask about funding in the first email.</div>
       </div>
+
+      <div class="sec" id="m5">
+        <div class="sh"><div class="sb2">💰</div><div><h2>Module 5: Scholarships for Nigerians</h2><p>Realistic funding sources open to you</p></div></div>
+        <div class="ib"><strong>Strategy:</strong> Apply for both university funding (stipends, assistantships) AND external scholarships. Never rely on only one.</div>
+        <div class="g2">
+          <div class="card"><h3>🌍 Mastercard Foundation</h3><p>Covers tuition, living, and travel for African students. Deadline: Oct–Dec annually.</p><div class="rl"><a class="rp" href="https://mastercardfdn.org/all/scholars/" target="_blank">Apply</a></div></div>
+          <div class="card"><h3>🇩🇪 DAAD (Germany)</h3><p>Full scholarships for African students — tuition, living, travel. Highly respected.</p><div class="rl"><a class="rp" href="https://www.daad.de/en/study-and-research-in-germany/scholarships/" target="_blank">DAAD Portal</a></div></div>
+          <div class="card"><h3>🇨🇦 Vanier Canada</h3><p>$50,000 CAD/year for 3 years for PhD. Very competitive.</p><div class="rl"><a class="rp" href="https://vanier.gc.ca" target="_blank">Vanier CGS</a></div></div>
+          <div class="card"><h3>🌐 Commonwealth</h3><p>Fully funded to study in the UK for Nigerian citizens.</p><div class="rl"><a class="rp" href="https://cscuk.fcdo.gov.uk/scholarships/" target="_blank">Apply</a></div></div>
+          <div class="card"><h3>🎓 University Funding</h3><p>Always ask about teaching assistantships or research assistantships when applying to research MSc/PhD.</p></div>
+          <div class="card"><h3>🔎 Find More</h3><div class="rl"><a class="rp" href="https://scholarshipdb.net" target="_blank">ScholarshipDB</a><a class="rp" href="https://www.scholars4dev.com" target="_blank">Scholars4Dev</a></div></div>
+        </div>
+      </div>
+
+      <div class="sec" id="m6">
+        <div class="sh"><div class="sb2">📄</div><div><h2>Module 6: Documents Checklist</h2><p>Get these ready early — some take months</p></div></div>
+        <div class="wb"><strong>⚠️ Start passport and transcripts today.</strong> Nigerian passports take 6–12 weeks. Official transcripts take 4–8 weeks. Do not wait.</div>
+        <div class="card"><h3>📘 International Passport</h3><p>Apply immediately via the NIS portal. Allow 2–3 months.</p><div class="rl"><a class="rp" href="https://passport.immigration.gov.ng" target="_blank">NIS Portal</a></div></div>
+        <div class="card"><h3>📋 Full Documents List</h3><ul><li><strong>Official transcripts</strong> — sealed copies from registry</li><li><strong>Academic CV</strong> — education, CGPA, projects, skills, awards</li><li><strong>3 Letters of Recommendation</strong> — ask lecturers, give 6 weeks notice</li><li><strong>English Language Certificate</strong> — IELTS, TOEFL, or Duolingo</li><li><strong>Birth Certificate</strong> — certified copy</li><li><strong>Research Proposal</strong> — 1–3 pages for PhD applications</li><li><strong>Statement of Purpose (SOP)</strong> — see Module 7</li></ul></div>
+      </div>
+
+      <div class="sec" id="m7">
+        <div class="sh"><div class="sb2">✍️</div><div><h2>Module 7: Writing Your SOP</h2><p>The most important document in your application</p></div></div>
+        <div class="card"><h3>SOP Structure — Follow This Exactly</h3><ul><li><strong>Para 1 — Hook:</strong> Open with a specific CS problem. Not "I love computers." — Instead: "The challenge of securing AI systems against adversarial attacks became real to me when..."</li><li><strong>Para 2 — Background:</strong> Your degree, CGPA, most relevant projects. Use numbers.</li><li><strong>Para 3 — Research Interest:</strong> What specific problem do you want to solve? Why does it matter?</li><li><strong>Para 4 — Why This University/Professor:</strong> Name the professor. Mention their paper. Explain the fit. Never be generic.</li><li><strong>Para 5 — Future Goals:</strong> What will you do after the degree?</li></ul></div>
+        <div class="ib"><strong>Task:</strong> Write a first rough draft — even if it's bad. Use the structure above. Paste the Google Doc link in your task note. Your mentor will review it.</div>
+        <div class="wb"><strong>Avoid:</strong> "I have always been passionate since childhood." | Listing your CV again. | Vague research interests. | Same SOP for every university — customise Para 4 each time.</div>
+      </div>
+
+      <div class="sec" id="m8">
+        <div class="sh"><div class="sb2">🚀</div><div><h2>Module 8: Submitting Applications</h2><p>Apply smartly and track everything</p></div></div>
+        <div class="card"><h3>How Many?</h3><p>Apply to <strong>5–8 universities</strong>: 2 stretch schools, 3–4 target schools, 2 safety schools. Prioritise universities where a professor already replied positively.</p></div>
+        <div class="card"><h3>Per-University Checklist</h3><ul><li>Create account on the university's application portal</li><li>Upload transcripts (sealed) + CV + customised SOP</li><li>Enter referees' contact details</li><li>Upload English test scores</li><li>Pay application fee (always ask for a waiver first)</li><li>Submit before the deadline — never on the last day</li></ul></div>
+        <div class="ib"><strong>Track every deadline.</strong> Canadian universities typically have January–February deadlines for September intake. Set phone alarms 30 and 7 days before each deadline.</div>
+      </div>
+
+      <div class="sec" id="m9">
+        <div class="sh"><div class="sb2">🛂</div><div><h2>Module 9: Visa & Pre-Departure</h2><p>After you receive an offer</p></div></div>
+        <div class="wb"><strong>Never accept an offer without sharing it with your mentor first.</strong> Check whether it includes full funding (tuition waiver + stipend) or requires self-funding.</div>
+        <div class="card"><h3>Canadian Study Permit</h3><ul><li>Apply on the IRCC portal (ircc.canada.ca)</li><li>You need: acceptance letter, proof of funds, passport, biometrics, medical exam</li><li>Allow <strong>2–4 months</strong> processing time</li><li>Book VFS Global appointment in Nigeria early</li></ul><div class="rl"><a class="rp" href="https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada.html" target="_blank">IRCC Portal</a></div></div>
+        <div class="g2">
+          <div class="card"><h3>🏠 Housing</h3><p>Apply for on-campus housing immediately after accepting your offer — it fills up fast.</p></div>
+          <div class="card"><h3>✈️ Arrival</h3><p>Book your flight only after visa is confirmed. Arrive before orientation. Contact student union for support.</p></div>
+        </div>
+      </div>
+
+      <div class="sec" id="tasks">
+        <div class="sh"><div class="sb2">✅</div><div><h2>My Task List</h2><p>Check off tasks and add notes — your mentor sees your progress live</p></div></div>
+        <div id="task-list"></div>
+      </div>
+
+      <div class="sec" id="resources">
+        <div class="sh"><div class="sb2">🔗</div><div><h2>Essential Resources</h2><p>All links in one place</p></div></div>
+        <div class="g2">
+          <div class="card"><h3>🔍 University Search</h3><div class="rl"><a class="rp" href="https://www.findamasters.com" target="_blank">FindAMasters</a><a class="rp" href="https://www.mastersportal.eu" target="_blank">MastersPortal</a><a class="rp" href="https://www.phdportal.eu" target="_blank">PhDPortal</a></div></div>
+          <div class="card"><h3>📄 Research Papers</h3><div class="rl"><a class="rp" href="https://scholar.google.com" target="_blank">Google Scholar</a><a class="rp" href="https://sci-hub.se" target="_blank">Sci-Hub</a><a class="rp" href="https://arxiv.org" target="_blank">arXiv</a></div></div>
+          <div class="card"><h3>💰 Scholarships</h3><div class="rl"><a class="rp" href="https://mastercardfdn.org/all/scholars/" target="_blank">Mastercard</a><a class="rp" href="https://www.daad.de/en/" target="_blank">DAAD</a><a class="rp" href="https://cscuk.fcdo.gov.uk/scholarships/" target="_blank">Commonwealth</a><a class="rp" href="https://scholarshipdb.net" target="_blank">ScholarshipDB</a></div></div>
+          <div class="card"><h3>🇨🇦 Canada Visa</h3><div class="rl"><a class="rp" href="https://www.canada.ca/en/immigration-refugees-citizenship/services/study-canada.html" target="_blank">IRCC</a><a class="rp" href="https://www.educanada.ca" target="_blank">EduCanada</a></div></div>
+          <div class="card"><h3>📘 Passport</h3><div class="rl"><a class="rp" href="https://passport.immigration.gov.ng" target="_blank">NIS Portal</a></div></div>
+          <div class="card"><h3>🎓 English Tests</h3><div class="rl"><a class="rp" href="https://www.ielts.org" target="_blank">IELTS</a><a class="rp" href="https://www.ets.org/toefl" target="_blank">TOEFL</a><a class="rp" href="https://englishtest.duolingo.com" target="_blank">Duolingo</a></div></div>
+        </div>
+      </div>
+
+
+      <div class="sec" id="messages">
+        <div class="sh"><div class="sb2">✉️</div><div><h2>Messages</h2><p>Your conversation with your mentor</p></div></div>
+        <div class="msg-wrap">
+          <div id="s-msg-toolbar" class="msg-toolbar">
+            <div class="msg-tabs">
+              <button class="msg-tab on" onclick="sMsgTab('inbox')">📥 Inbox <span id="s-inbox-count" style="font-weight:700;"></span></button>
+              <button class="msg-tab" onclick="sMsgTab('sent')">📤 Sent</button>
+            </div>
+            <button class="msg-compose-btn" onclick="sMsgTab('compose')">✏️ New Message</button>
+          </div>
+          <div id="s-msg-list"><div class="msg-empty">Select Messages in the sidebar to load your inbox.</div></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
 
+<!-- ════════════ MENTOR SCREEN ════════════ -->
 <div id="screen-mentor">
   <nav class="sb" id="sb-m">
-    <div class="sb-hd"><div class="sb-lw"><div class="sb-li">✈</div><div><div class="sb-lt">Mentor <span>View</span></div><div class="sb-tg">Mentor Dashboard</div></div></div></div>
-    <div class="sb-pg"><label>Active Student</label><div class="sb-pc" id="m-pct">0%</div><div class="sb-ps" id="m-sub">Loading…</div><div class="pw"><div class="pb" id="m-bar"></div></div></div>
+    <div class="sb-hd">
+      <div class="sb-lw">
+        <div class="sb-li">✈</div>
+        <div>
+          <div class="sb-lt">Mentor <span>View</span></div>
+          <div class="sb-tg">Mentor Dashboard</div>
+        </div>
+      </div>
+    </div>
+    <div class="sb-pg">
+      <label>Active Student</label>
+      <div class="sb-pc" id="m-pct">0%</div>
+      <div class="sb-ps" id="m-sub">Loading…</div>
+      <div class="pw"><div class="pb" id="m-bar"></div></div>
+    </div>
     <nav>
       <div class="ns">Dashboard</div>
       <a class="ni" href="#m-top">📊 Overview <span id="pend-badge"></span></a>
       <a class="ni" href="#m-tasks">✅ Task Details</a>
-      <a class="ni" href="#m-messages">✉️ Messages <span id="m-msg-badge" style="display:none;background:#e74c3c;color:#fff;border-radius:99px;font-size:0.6rem;padding:1px 6px;font-weight:700;margin-left:4px;vertical-align:middle;"></span></a>
+      <a class="ni" href="#m-compose" onclick="mMsgTab('inbox')">✉️ Messages <span id="m-msg-badge" style="display:none;background:#e74c3c;color:#fff;border-radius:99px;font-size:0.6rem;padding:1px 6px;font-weight:700;margin-left:4px;vertical-align:middle;"></span></a>
       <div class="ns" style="margin-top:8px;">Students</div>
       <div id="sb-students"><div style="padding:6px 20px;font-size:0.78rem;color:rgba(255,255,255,0.28);">No students yet</div></div>
     </nav>
-    <div class="sb-ft"><div class="sb-un" id="mentor-name">Mentor</div><div class="sb-ur">Mentor</div><button class="sb-lo" onclick="doSignOut()">Sign Out</button></div>
+    <div class="sb-ft">
+      <div class="sb-un" id="mentor-name">Mentor</div>
+      <div class="sb-ur">Mentor</div>
+      <button class="sb-lo" onclick="doSignOut()">Sign Out</button>
+    </div>
   </nav>
   <div class="main">
-    <div class="mhero" id="m-top"><div class="ey">Mentor View · Live from Firebase</div><h1 id="m-title">Student <em>Progress</em></h1><p>Real-time view of every task. Leave feedback on any task below.</p></div>
+    <div class="mhero" id="m-top">
+      <div class="ey">Mentor View · Live from Firebase</div>
+      <h1 id="m-title">Student <em>Progress</em></h1>
+      <p>Real-time view of every task. Leave feedback on any task below.</p>
+    </div>
     <div id="appr-box"></div>
     <div id="stu-sel"></div>
-    <div class="msum"><div class="msc"><div class="n" id="m-pct2">0%</div><div class="l">Overall Progress</div><div class="pw" style="margin-top:8px;"><div class="pb" id="m-bar2"></div></div></div><div class="msc"><div class="n" id="m-done">0</div><div class="l">Tasks Completed</div></div><div class="msc"><div class="n" id="m-left">31</div><div class="l">Tasks Remaining</div></div></div>
-    <div class="mgrid-wrap" style="padding:16px 52px 0;"><div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px;font-family:'DM Mono',monospace;">Progress by Month</div><div class="mgrid"><div class="mc2"><div class="ml">Month 1</div><div class="ms" id="ms1">0/8</div></div><div class="mc2"><div class="ml">Month 2</div><div class="ms" id="ms2">0/7</div></div><div class="mc2"><div class="ml">Month 3</div><div class="ms" id="ms3">0/6</div></div><div class="mc2"><div class="ml">Month 4</div><div class="ms" id="ms4">0/5</div></div><div class="mc2"><div class="ml">Month 5</div><div class="ms" id="ms5">0/2</div></div><div class="mc2"><div class="ml">Month 6</div><div class="ms" id="ms6">0/3</div></div></div></div>
+    <div class="msum">
+      <div class="msc"><div class="n" id="m-pct2">0%</div><div class="l">Overall Progress</div><div class="pw" style="margin-top:8px;"><div class="pb" id="m-bar2"></div></div></div>
+      <div class="msc"><div class="n" id="m-done">0</div><div class="l">Tasks Completed</div></div>
+      <div class="msc"><div class="n" id="m-left">31</div><div class="l">Tasks Remaining</div></div>
+    </div>
+    <div class="mgrid-wrap" style="padding:16px 52px 0;">
+      <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px;font-family:'DM Mono',monospace;">Progress by Month</div>
+      <div class="mgrid">
+        <div class="mc2"><div class="ml">Month 1</div><div class="ms" id="ms1">0/8</div></div>
+        <div class="mc2"><div class="ml">Month 2</div><div class="ms" id="ms2">0/7</div></div>
+        <div class="mc2"><div class="ml">Month 3</div><div class="ms" id="ms3">0/6</div></div>
+        <div class="mc2"><div class="ml">Month 4</div><div class="ms" id="ms4">0/5</div></div>
+        <div class="mc2"><div class="ml">Month 5</div><div class="ms" id="ms5">0/2</div></div>
+        <div class="mc2"><div class="ml">Month 6</div><div class="ms" id="ms6">0/3</div></div>
+      </div>
+    </div>
     <div class="mcnt" id="m-tasks"></div>
-    <div class="mcnt" id="m-messages" style="padding-top:0;">
+
+    <!-- MESSAGES PANEL -->
+    <div class="mcnt" id="m-compose" style="padding-top:0;">
       <div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--navy);padding:20px 0 16px;border-bottom:2px solid var(--border);margin-bottom:20px;">✉️ Messages</div>
-      <div id="m-chat-stu-list" class="chat-stu-list"></div>
-      <div class="chat-wrap" id="m-chat-wrap" style="display:none;">
-        <div class="chat-header"><div class="chat-header-avatar" id="m-chat-av">?</div><div><div class="chat-header-name" id="m-chat-name">Student</div><div class="chat-header-sub">Path Abroad Student</div></div></div>
-        <div class="chat-messages" id="m-chat-messages"><div class="chat-empty">Loading…</div></div>
-        <div class="chat-input-row"><input class="chat-input" id="m-chat-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMChat()"/><button class="chat-send-btn" onclick="sendMChat()">➤</button></div>
+      <div class="msg-wrap">
+        <div id="m-msg-toolbar" class="msg-toolbar">
+          <div class="msg-tabs">
+            <button class="msg-tab on" onclick="mMsgTab('inbox')">📥 Inbox <span id="m-inbox-count" style="font-weight:700;"></span></button>
+            <button class="msg-tab" onclick="mMsgTab('sent')">📤 Sent</button>
+          </div>
+          <button class="msg-compose-btn" onclick="mMsgTab('compose')">✏️ New Message</button>
+        </div>
+        <div id="m-msg-list"><div class="msg-empty">Loading messages…</div></div>
       </div>
     </div>
   </div>
 </div>
+
 <button id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+<button id="scroll-down" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})">↓</button>
 
+<!-- ════════════ FIREBASE + APP LOGIC ════════════ -->
 <script type="module">
-import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import{getFirestore,doc,setDoc,getDoc,onSnapshot,collection,getDocs,serverTimestamp,query,where,deleteDoc,addDoc,updateDoc}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import{getMessaging,getToken,onMessage}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+         sendPasswordResetEmail, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot,
+         collection, getDocs, serverTimestamp, query, where, deleteDoc,
+         addDoc, updateDoc, orderBy }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const CFG={apiKey:"AIzaSyBiU-23Ki5Cs369fdfGwzzNIYCrWCMIbko",authDomain:"road-to-abroad-mentorship.firebaseapp.com",projectId:"road-to-abroad-mentorship",storageBucket:"road-to-abroad-mentorship.firebasestorage.app",messagingSenderId:"512665582745",appId:"1:512665582745:web:db508416cd0b7bdd26cc08"};
-const MENTOR="sjohndamilola92@gmail.com",MID="MENTOR",VK="BEptvHyXIRxXYuzcbqkpgavcPcdVAFPI8jIWp-uPXCFayjjPe4WHvjs9wbNykdFwvORalwsqbsp29TUXN6yxaII";
-const app=initializeApp(CFG),auth=getAuth(app),db=getFirestore(app),msg=getMessaging(app);
-
-async function initPush(uid){
-  if(!('Notification'in window))return;
-  if(Notification.permission==='granted'){await regToken(uid);listenFg();return;}
-  if(Notification.permission==='denied')return;
-  localStorage.removeItem('notif-dismissed');
-  document.getElementById('notif-banner')?.classList.add('on');
-}
-window.requestPushPermission=async()=>{
-  dismissNotifBanner();
-  try{const p=await Notification.requestPermission();if(p==='granted'){await regToken(me?.uid);listenFg();showToast('✅ Notifications enabled!','You will now get daily reminders and instant alerts.',4000);}}catch(e){}
+// ── APP CONFIG — edit these anytime ─────────────────
+const CFG = {
+  apiKey:            "AIzaSyBiU-23Ki5Cs369fdfGwzzNIYCrWCMIbko",
+  authDomain:        "road-to-abroad-mentorship.firebaseapp.com",
+  projectId:         "road-to-abroad-mentorship",
+  storageBucket:     "road-to-abroad-mentorship.firebasestorage.app",
+  messagingSenderId: "512665582745",
+  appId:             "1:512665582745:web:db508416cd0b7bdd26cc08"
 };
-window.dismissNotifBanner=()=>{document.getElementById('notif-banner')?.classList.remove('on');localStorage.setItem('notif-dismissed','1');};
-async function regToken(uid){
-  if(!uid)return;
-  try{
-    const sw=await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-    const t=await getToken(msg,{vapidKey:VK,serviceWorkerRegistration:sw});
-    if(t){await setDoc(doc(db,'users',uid),{fcmToken:t},{merge:true});console.log('FCM saved');}
-  }catch(e){console.warn('FCM:',e.message);}
-}
-function listenFg(){
-  onMessage(msg,(p)=>{
-    showToast(p.notification?.title||'Path Abroad',p.notification?.body||'',6000);
-    if(isMentor&&acu)loadMChat(acu);else if(!isMentor&&me)loadSChat();
-  });
-}
-function showToast(title,body,d=5000){
-  document.getElementById('nt-title').textContent=title;
-  document.getElementById('nt-body').textContent=body;
-  document.getElementById('notif-toast').classList.add('on');
-  clearTimeout(window._tt);window._tt=setTimeout(hideToast,d);
-}
-window.hideToast=()=>document.getElementById('notif-toast').classList.remove('on');
+const MENTOR = "sjohndamilola92@gmail.com";
 
-const TASKS=[
-  {id:"t1",m:1,g:"Identity & Documents",txt:"Apply for international passport at NIS online portal",h:"passport.immigration.gov.ng — Allow 2–3 months"},
-  {id:"t2",m:1,g:"Identity & Documents",txt:"Request unofficial transcripts from university registry",h:"Get 5 copies for multiple applications"},
-  {id:"t3",m:1,g:"Academic Profile",txt:"Write 1-page Academic Profile and share the link with your mentor",h:"Google Doc is fine. First draft is fine."},
-  {id:"t4",m:1,g:"Academic Profile",txt:"Create your academic CV (education, CGPA, projects, skills, awards)",h:""},
-  {id:"t5",m:1,g:"Academic Profile",txt:"Set up Google Scholar profile (scholar.google.com)",h:""},
-  {id:"t6",m:1,g:"Research Universities",txt:"Use FindAMasters.com and MastersPortal.eu — shortlist 10 programmes",h:""},
-  {id:"t7",m:1,g:"Research Universities",txt:"Create a University Tracker spreadsheet (Name, Country, Deadline, Funding, Status)",h:""},
-  {id:"t8",m:1,g:"Research Universities",txt:"Define your specific research interest in 1–2 sentences",h:"e.g. adversarial robustness in AI for low-resource NLP"},
-  {id:"t9",m:2,g:"Professor Outreach",txt:"Find 20 professors on Google Scholar in your research area",h:""},
-  {id:"t10",m:2,g:"Professor Outreach",txt:"Read at least 1 recent paper from each of your top 10 professors",h:"Use Sci-Hub if needed"},
-  {id:"t11",m:2,g:"Professor Outreach",txt:"Email first batch of 5 professors using the Module 4 template",h:""},
-  {id:"t12",m:2,g:"Professor Outreach",txt:"Create Professor Outreach Tracker spreadsheet",h:"Name | Uni | Emailed | Reply | Notes"},
-  {id:"t13",m:2,g:"Professor Outreach",txt:"Email remaining 10 professors (second batch) — personalised",h:""},
-  {id:"t14",m:2,g:"English Language Test",txt:"Register for IELTS or TOEFL",h:"Target: IELTS 6.5+ or TOEFL 90+"},
-  {id:"t15",m:2,g:"English Language Test",txt:"Begin IELTS/TOEFL preparation — 1 hour per day",h:""},
-  {id:"t16",m:3,g:"Key Documents",txt:"Request 3 official Letters of Recommendation from lecturers",h:"Give them your CV and SOP draft. 6 weeks notice."},
-  {id:"t17",m:3,g:"Key Documents",txt:"Obtain official transcripts from university (sealed)",h:""},
-  {id:"t18",m:3,g:"Key Documents",txt:"Obtain certified copy of birth certificate",h:""},
-  {id:"t19",m:3,g:"Key Documents",txt:"Take IELTS or TOEFL exam",h:""},
-  {id:"t20",m:3,g:"SOP Writing",txt:"Write first rough draft of SOP (500 words minimum)",h:"Use Module 7 structure"},
-  {id:"t21",m:3,g:"SOP Writing",txt:"Send SOP draft to your mentor for review and feedback",h:""},
-  {id:"t22",m:4,g:"Scholarships",txt:"Apply for Mastercard Foundation Scholarship",h:"mastercardfdn.org/all/scholars/"},
-  {id:"t23",m:4,g:"Scholarships",txt:"Apply for DAAD Scholarship (if targeting Germany)",h:"daad.de/en/"},
-  {id:"t24",m:4,g:"Scholarships",txt:"Apply for at least 2 other scholarships from your tracker",h:""},
-  {id:"t25",m:4,g:"SOP Final",txt:"Final polished SOP completed and reviewed by your mentor",h:""},
-  {id:"t26",m:4,g:"SOP Final",txt:"Confirm all 3 recommendation letters are ready",h:""},
-  {id:"t27",m:5,g:"Applications",txt:"Submit university applications (5–8 universities)",h:""},
-  {id:"t28",m:5,g:"Applications",txt:"Follow up with professors who expressed interest",h:""},
-  {id:"t29",m:6,g:"Decisions & Visa",txt:"When offer received: review carefully and share with your mentor first",h:"Never accept without reading the full funding terms"},
-  {id:"t30",m:6,g:"Decisions & Visa",txt:"Begin student visa application (after offer accepted)",h:"Allow 2–4 months for Canada study permit"},
-  {id:"t31",m:6,g:"Decisions & Visa",txt:"Apply for on-campus or off-campus housing",h:""},
+const app  = initializeApp(CFG);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ── TASKS ────────────────────────────────────────────
+const TASKS = [
+  {id:"t1", m:1, g:"Identity & Documents", txt:"Apply for international passport at NIS online portal", h:"passport.immigration.gov.ng — Allow 2–3 months"},
+  {id:"t2", m:1, g:"Identity & Documents", txt:"Request unofficial transcripts from university registry", h:"Get 5 copies for multiple applications"},
+  {id:"t3", m:1, g:"Academic Profile", txt:"Write 1-page Academic Profile and share the link with your mentor", h:"Google Doc is fine. First draft — don't overthink."},
+  {id:"t4", m:1, g:"Academic Profile", txt:"Create your academic CV (education, CGPA, projects, skills, awards)", h:""},
+  {id:"t5", m:1, g:"Academic Profile", txt:"Set up Google Scholar profile (scholar.google.com)", h:"Add your name, university, any projects"},
+  {id:"t6", m:1, g:"Research Universities", txt:"Use FindAMasters.com and MastersPortal.eu — shortlist 10 programmes", h:""},
+  {id:"t7", m:1, g:"Research Universities", txt:"Create a University Tracker spreadsheet (Name, Country, Deadline, Funding, Status)", h:""},
+  {id:"t8", m:1, g:"Research Universities", txt:"Define your specific research interest in 1–2 sentences", h:"e.g. 'adversarial robustness in AI for low-resource NLP'"},
+  {id:"t9",  m:2, g:"Professor Outreach", txt:"Find 20 professors on Google Scholar in your research area", h:""},
+  {id:"t10", m:2, g:"Professor Outreach", txt:"Read at least 1 recent paper from each of your top 10 professors", h:"Use Sci-Hub if you can't access them"},
+  {id:"t11", m:2, g:"Professor Outreach", txt:"Email first batch of 5 professors using the Module 4 template", h:""},
+  {id:"t12", m:2, g:"Professor Outreach", txt:"Create Professor Outreach Tracker spreadsheet", h:"Name | Uni | Emailed | Reply | Notes"},
+  {id:"t13", m:2, g:"Professor Outreach", txt:"Email remaining 10 professors (second batch) — personalised", h:""},
+  {id:"t14", m:2, g:"English Language Test", txt:"Register for IELTS or TOEFL", h:"Target: IELTS 6.5+ or TOEFL 90+"},
+  {id:"t15", m:2, g:"English Language Test", txt:"Begin IELTS/TOEFL preparation — 1 hour per day", h:"Free: IELTS.org, Magoosh YouTube, Cambridge books"},
+  {id:"t16", m:3, g:"Key Documents", txt:"Request 3 official Letters of Recommendation from lecturers", h:"Give them your CV, class list, and SOP draft. 6 weeks notice."},
+  {id:"t17", m:3, g:"Key Documents", txt:"Obtain official transcripts from university (sealed)", h:""},
+  {id:"t18", m:3, g:"Key Documents", txt:"Obtain certified copy of birth certificate", h:""},
+  {id:"t19", m:3, g:"Key Documents", txt:"Take IELTS or TOEFL exam", h:""},
+  {id:"t20", m:3, g:"SOP Writing", txt:"Write first rough draft of SOP (500 words minimum)", h:"Use Module 7 structure"},
+  {id:"t21", m:3, g:"SOP Writing", txt:"Send SOP draft to your mentor for review and feedback", h:""},
+  {id:"t22", m:4, g:"Scholarships", txt:"Apply for Mastercard Foundation Scholarship", h:"mastercardfdn.org/all/scholars/"},
+  {id:"t23", m:4, g:"Scholarships", txt:"Apply for DAAD Scholarship (if targeting Germany)", h:"daad.de/en/"},
+  {id:"t24", m:4, g:"Scholarships", txt:"Apply for at least 2 other scholarships from your tracker", h:""},
+  {id:"t25", m:4, g:"SOP Final", txt:"Final polished SOP completed and reviewed by your mentor", h:""},
+  {id:"t26", m:4, g:"SOP Final", txt:"Confirm all 3 recommendation letters are ready", h:""},
+  {id:"t27", m:5, g:"Applications", txt:"Submit university applications (5–8 universities)", h:""},
+  {id:"t28", m:5, g:"Applications", txt:"Follow up with professors who expressed interest", h:"Tell them you have applied"},
+  {id:"t29", m:6, g:"Decisions & Visa", txt:"When offer received: review carefully and share with your mentor first", h:"Never accept without reading the full funding terms and consulting your mentor"},
+  {id:"t30", m:6, g:"Decisions & Visa", txt:"Begin student visa application (after offer accepted)", h:"Allow 2–4 months for Canada study permit"},
+  {id:"t31", m:6, g:"Decisions & Visa", txt:"Apply for on-campus or off-campus housing", h:""},
 ];
-const ML={1:'Month 1 — Research & Profile',2:'Month 2 — Outreach & Language',3:'Month 3 — Documents',4:'Month 4 — Scholarships & SOP',5:'Month 5 — Apply',6:'Month 6 — Visa'};
+const ML = {1:'Month 1 — Research & Profile',2:'Month 2 — Outreach & Language',3:'Month 3 — Documents',4:'Month 4 — Scholarships & SOP',5:'Month 5 — Apply',6:'Month 6 — Visa'};
 
-let me=null,isMentor=false,stuUID=null,acu=null,unsubP=null,unsubA=null,unsubChat=null,isSigningUp=false,sem={};
+// ── STATE ────────────────────────────────────────────
+let me = null, isMentor = false, stuUID = null;
+let unsubP = null, unsubA = null;
+let isSigningUp = false; // prevents onAuthStateChanged from interfering during sign up
 
-function show(id){['screen-loading','screen-login','screen-pending','screen-student','screen-mentor'].forEach(s=>{const e=document.getElementById(s);if(e)e.style.display='none';});const t=document.getElementById(id);if(!t)return;t.style.display=(id==='screen-login'||id==='screen-pending')?'flex':'block';}
-
-onAuthStateChanged(auth,async user=>{
-  if(isSigningUp)return;
-  if(!user){show('screen-login');return;}
-  me=user;isMentor=user.email.toLowerCase()===MENTOR.toLowerCase();
-  if(isMentor){
-    show('screen-mentor');
-    const ms=await getDoc(doc(db,'users',user.uid));if(ms.exists()&&ms.data().name)tx('mentor-name',ms.data().name);
-    loadMentor();initMBadge();initPush(user.uid);return;
+// ── SCREEN MANAGER ───────────────────────────────────
+// Only one screen visible at a time
+function show(id) {
+  ['screen-loading','screen-login','screen-pending','screen-student','screen-mentor'].forEach(s => {
+    const el = document.getElementById(s);
+    if (!el) return;
+    el.style.display = 'none';
+  });
+  const target = document.getElementById(id);
+  if (!target) return;
+  // Login and pending need flex to centre content
+  if (id === 'screen-login' || id === 'screen-pending') {
+    target.style.display = 'flex';
+  } else {
+    target.style.display = 'block';
   }
-  const snap=await getDoc(doc(db,'users',user.uid));
-  if(snap.exists()&&snap.data().status==='deleted'){await signOut(auth);resetLogin();show('screen-login');err('si-err','⛔ This account has been removed. Please sign up again.','#e74c3c');return;}
-  if(snap.exists()&&snap.data().status==='approved'){tx('s-name',snap.data().name||user.email);show('screen-student');buildTasks();listenStu(user.uid);initSBadge(user.uid);initPush(user.uid);loadSChat();}
-  else{
-    if(!snap.exists())await setDoc(doc(db,'users',user.uid),{email:user.email,name:user.email,role:'student',status:'pending',createdAt:serverTimestamp()});
-    tx('pend-em',user.email);show('screen-pending');
-    unsubP=onSnapshot(doc(db,'users',user.uid),s=>{
-      if(!s.exists()){if(unsubP){unsubP();unsubP=null;}signOut(auth).then(()=>{resetLogin();show('screen-login');window.showForm('su');});return;}
-      if(s.data().status==='approved'){if(unsubP){unsubP();unsubP=null;}celebrate(()=>{tx('s-name',s.data().name||user.email);show('screen-student');buildTasks();listenStu(user.uid);initSBadge(user.uid);initPush(user.uid);loadSChat();});}
+}
+
+// ── AUTH ─────────────────────────────────────────────
+onAuthStateChanged(auth, async user => {
+  if (isSigningUp) return; // doSignUp handles routing during sign up
+  if (!user) { show('screen-login'); return; }
+  me = user;
+  isMentor = user.email.toLowerCase() === MENTOR.toLowerCase();
+  if (isMentor) {
+    show('screen-mentor');
+    // Show mentor's own name from their user doc if available
+    const msnap = await getDoc(doc(db,'users',user.uid));
+    if(msnap.exists() && msnap.data().name) {
+      const mn = document.getElementById('mentor-name');
+      if(mn) mn.textContent = msnap.data().name;
+    }
+    loadMentor(); initMentorMsgBadge();
+    return;
+  }
+  const snap = await getDoc(doc(db,'users',user.uid));
+
+  // Account was deleted by mentor
+  if (snap.exists() && snap.data().status === 'deleted') {
+    await signOut(auth);
+    resetLoginForm();
+    show('screen-login');
+    err('si-err', '⛔ This account has been removed. Please sign up again to request access.', '#e74c3c');
+    return;
+  }
+
+  if (snap.exists() && snap.data().status === 'approved') {
+    document.getElementById('s-name').textContent = snap.data().name || user.email;
+    show('screen-student');
+    buildTasks();
+    listenStudent(user.uid);
+    initStudentMsgBadge(user.uid);
+  } else {
+    if (!snap.exists()) {
+      await setDoc(doc(db,'users',user.uid),{email:user.email,name:user.email,role:'student',status:'pending',createdAt:serverTimestamp()});
+    }
+    document.getElementById('pend-em').textContent = user.email;
+    show('screen-pending');
+    unsubP = onSnapshot(doc(db,'users',user.uid), s => {
+      if (!s.exists()) {
+        if(unsubP){unsubP();unsubP=null;}
+        signOut(auth).then(()=>{ resetLoginForm(); show('screen-login'); window.showForm('su'); });
+        return;
+      }
+      if (s.data().status === 'approved') {
+        if(unsubP){unsubP();unsubP=null;}
+        showApprovalCelebration(() => {
+          document.getElementById('s-name').textContent = s.data().name || user.email;
+          show('screen-student');
+          buildTasks();
+          listenStudent(user.uid);
+        });
+      }
     });
   }
 });
 
-window.doSignIn=async()=>{const em=g('si-em'),pw=g('si-pw');err('si-err','');dis('si-btn',true,'Signing in…');try{await signInWithEmailAndPassword(auth,em,pw);}catch(e){err('si-err',aerr(e.code));dis('si-btn',false,'Sign In');}};
-window.doSignUp=async()=>{
-  const nm=g('su-nm'),em=g('su-em'),pw=g('su-pw');err('su-err','');
-  if(!nm){err('su-err','Please enter your full name.');return;}if(!em){err('su-err','Please enter your email.');return;}if(pw.length<6){err('su-err','Password must be at least 6 characters.');return;}
-  dis('su-btn',true,'Creating account…');isSigningUp=true;
-  try{const c=await createUserWithEmailAndPassword(auth,em,pw);await setDoc(doc(db,'users',c.user.uid),{email:em,name:nm,role:'student',status:'pending',createdAt:serverTimestamp()});isSigningUp=false;me=c.user;try{sendNewStudentEmail(nm,em);}catch(x){}routePend(c.user.uid,em,nm);}
-  catch(e){
-    if(e.code==='auth/email-already-in-use'){
-      try{const c2=await signInWithEmailAndPassword(auth,em,pw);const sn=await getDoc(doc(db,'users',c2.user.uid));
-        if(!sn.exists()||sn.data().status==='deleted'){await setDoc(doc(db,'users',c2.user.uid),{email:em,name:nm,role:'student',status:'pending',createdAt:serverTimestamp()});isSigningUp=false;me=c2.user;try{sendNewStudentEmail(nm,em);}catch(x){}routePend(c2.user.uid,em,nm);}
-        else{isSigningUp=false;await signOut(auth);err('su-err','This email is already registered. Please sign in.');dis('su-btn',false,'Sign Up');}
-      }catch(e2){isSigningUp=false;if(e2.code==='auth/wrong-password'||e2.code==='auth/invalid-credential')err('su-err','We found your previous account. Use your original password or reset it via Forgot password.');else err('su-err',aerr(e2.code));dis('su-btn',false,'Sign Up');}
-    }else{isSigningUp=false;err('su-err',aerr(e.code));dis('su-btn',false,'Sign Up');}
+// ── AUTH ACTIONS ─────────────────────────────────────
+window.doSignIn = async () => {
+  const em=g('si-em'), pw=g('si-pw');
+  err('si-err',''); dis('si-btn',true,'Signing in…');
+  try {
+    await signInWithEmailAndPassword(auth,em,pw);
+    // onAuthStateChanged handles routing
+  } catch(e){
+    err('si-err',aerr(e.code));
+    dis('si-btn',false,'Sign In');
   }
 };
-function routePend(uid,email,name){tx('pend-em',email);show('screen-pending');unsubP=onSnapshot(doc(db,'users',uid),s=>{if(!s.exists()){if(unsubP){unsubP();unsubP=null;}signOut(auth).then(()=>{resetLogin();show('screen-login');window.showForm('su');});return;}if(s.data().status==='approved'){if(unsubP){unsubP();unsubP=null;}celebrate(()=>{tx('s-name',s.data().name||email);show('screen-student');buildTasks();listenStu(uid);initSBadge(uid);initPush(uid);loadSChat();});}});}
-function celebrate(cb){const bar=document.getElementById('pend-bar'),txt=document.getElementById('pend-bar-text'),icon=document.getElementById('pend-icon'),title=document.getElementById('pend-title'),sub=document.getElementById('pend-sub');if(bar){bar.style.background='#eafaf1';bar.style.borderColor='#27ae60';}if(txt){txt.style.color='#27ae60';txt.textContent='✅ Your journey to success begins now!';}if(icon)icon.textContent='🎉';if(title){title.textContent="You're Approved!";title.style.color='#27ae60';}if(sub)sub.textContent='Taking you to your guide in a moment…';setTimeout(cb,2500);}
-window.doReset=async()=>{const em=g('si-em');if(!em){err('si-err','Enter your email above first.','#e8a020');return;}err('si-err','Sending…','#6b7280');try{await sendPasswordResetEmail(auth,em);err('si-err','✓ Reset email sent to '+em,'#27ae60');}catch(e){err('si-err','Could not send reset email.');}};
-window.doSignOut=async()=>{if(unsubP){unsubP();unsubP=null;}if(unsubA){unsubA();unsubA=null;}if(unsubChat){unsubChat();unsubChat=null;}closeSb();await signOut(auth);resetLogin();show('screen-login');};
-window.showForm=function(id){['si','su'].forEach(f=>{document.getElementById('form-'+f)?.classList.toggle('on',f===id);document.getElementById('tab-'+f)?.classList.toggle('on',f===id);});};
-function resetLogin(){dis('si-btn',false,'Sign In');dis('su-btn',false,'Sign Up');err('si-err','');err('su-err','');['si-em','si-pw','su-nm','su-em','su-pw'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});window.showForm('si');}
 
-function buildTasks(){let h='',cm=0,cg='';TASKS.forEach(t=>{if(t.m!==cm){if(cm)h+='</div>';h+=`<div class="mb"><div class="mb-t">${ML[t.m]}</div><div class="mb-n">0${t.m}</div></div><div>`;cm=t.m;cg='';}if(t.g!==cg){h+=`<div class="tgt">${t.g}</div>`;cg=t.g;}h+=`<div class="ti" id="ti-${t.id}"><div class="tc" onclick="tog('${t.id}')"><svg width="11" height="11" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2.5" fill="none"/></svg></div><div class="tb2"><div class="tt">${t.txt}</div>${t.h?`<div class="th">${t.h}</div>`:''}<div class="tnr"><input class="tni" id="ni-${t.id}" type="text" placeholder="Add a note or link for your mentor…" oninput="uns('${t.id}')"/><button class="tsb" id="nb-${t.id}" onclick="sn('${t.id}')">Save</button></div><div class="mfb" id="fb-${t.id}" style="display:none"></div></div></div>`;});h+='</div>';document.getElementById('task-list').innerHTML=h;}
-function listenStu(uid){if(unsubP)unsubP();unsubP=onSnapshot(collection(db,'progress',uid,'tasks'),snap=>{const d={};snap.forEach(x=>{d[x.id]=x.data();});TASKS.forEach(t=>{const el=document.getElementById('ti-'+t.id);if(!el)return;const e=d[t.id]||{};el.classList.toggle('done',!!e.done);const ni=document.getElementById('ni-'+t.id);if(ni&&e.note!==undefined&&ni!==document.activeElement)ni.value=e.note||'';const fb=document.getElementById('fb-'+t.id);if(fb){if(e.mentorComment){fb.style.display='block';fb.innerHTML=`<strong>Mentor:</strong> ${e.mentorComment}`;}else fb.style.display='none';}});const done=TASKS.filter(t=>d[t.id]?.done).length,pct=Math.round(done/TASKS.length*100);tx('s-pct',pct+'%');tx('s-sub',done+' / '+TASKS.length+' tasks done');bw('s-bar',pct);});}
-window.tog=async id=>{if(!me)return;const r=doc(db,'progress',me.uid,'tasks',id);const s=await getDoc(r);await setDoc(r,{done:!(s.exists()&&s.data().done),updatedAt:serverTimestamp()},{merge:true});};
-window.uns=id=>document.getElementById('nb-'+id).classList.add('uns');
-window.sn=async id=>{if(!me)return;const note=document.getElementById('ni-'+id).value;await setDoc(doc(db,'progress',me.uid,'tasks',id),{note,updatedAt:serverTimestamp()},{merge:true});const b=document.getElementById('nb-'+id);b.classList.remove('uns');b.textContent='Saved ✓';setTimeout(()=>b.textContent='Save',2000);};
+window.doSignUp = async () => {
+  const nm=g('su-nm'), em=g('su-em'), pw=g('su-pw');
+  err('su-err','');
+  if(!nm){ err('su-err','Please enter your full name.'); return; }
+  if(!em){ err('su-err','Please enter your email address.'); return; }
+  if(pw.length<6){ err('su-err','Password must be at least 6 characters.'); return; }
+  dis('su-btn',true,'Creating account…');
+  isSigningUp = true;
 
-// CHAT
-function ftm(ts){if(!ts)return'';const d=ts.toDate?ts.toDate():new Date((ts.seconds||0)*1000);return d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
-function fday(ts){if(!ts)return'';const d=ts.toDate?ts.toDate():new Date((ts.seconds||0)*1000);const diff=Math.floor((new Date()-d)/86400000);if(diff===0)return'Today';if(diff===1)return'Yesterday';return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
-function renderChat(msgs,myUid,cont){
-  if(!msgs.length){cont.innerHTML='<div class="chat-empty">No messages yet — say hello! 👋</div>';return;}
-  let h='',ld='';
-  msgs.forEach(m=>{
-    const day=fday(m.createdAt);if(day!==ld){h+=`<div class="chat-day-label">${day}</div>`;ld=day;}
-    const sent=isMentor?(m.senderUid===MID):(m.senderUid===myUid);
-    const safe=(m.body||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-    h+=`<div class="chat-bubble-wrap ${sent?'sent':'recv'}"><div class="chat-bubble ${sent?'sent':'recv'}">${safe}</div><div class="chat-time">${ftm(m.createdAt)}</div></div>`;
+  try {
+    // Try creating a brand new account first
+    const c = await createUserWithEmailAndPassword(auth,em,pw);
+    await setDoc(doc(db,'users',c.user.uid),{
+      email:em, name:nm, role:'student', status:'pending', createdAt:serverTimestamp()
+    });
+    isSigningUp = false;
+    me = c.user;
+    try { sendNewStudentEmail(nm, em); } catch(x){}
+    routeToPending(c.user.uid, em, nm);
+
+  } catch(e) {
+
+    if (e.code === 'auth/email-already-in-use') {
+      // Email taken — try signing in to check if it's a deleted account
+      try {
+        const c2 = await signInWithEmailAndPassword(auth, em, pw);
+        const snap = await getDoc(doc(db,'users',c2.user.uid));
+
+        if (!snap.exists() || snap.data().status === 'deleted') {
+          // Deleted or orphaned account — allow re-registration, progress preserved
+          await setDoc(doc(db,'users',c2.user.uid),{
+            email:em, name:nm, role:'student', status:'pending', createdAt:serverTimestamp()
+          });
+          isSigningUp = false;
+          me = c2.user;
+          try { sendNewStudentEmail(nm, em); } catch(x){}
+          routeToPending(c2.user.uid, em, nm);
+
+        } else {
+          // Account is active — tell them to sign in
+          isSigningUp = false;
+          await signOut(auth);
+          err('su-err','This email is already registered. Please use the Sign In tab.');
+          dis('su-btn',false,'Sign Up');
+        }
+
+      } catch(e2) {
+        isSigningUp = false;
+        if (e2.code === 'auth/wrong-password' || e2.code === 'auth/invalid-credential') {
+          err('su-err','We found your previous account. Use your original password to restore your progress — or go to Sign In → Forgot password to reset it first.');
+        } else {
+          err('su-err', aerr(e2.code));
+        }
+        dis('su-btn',false,'Sign Up');
+      }
+
+    } else {
+      isSigningUp = false;
+      err('su-err', aerr(e.code));
+      dis('su-btn',false,'Sign Up');
+    }
+  }
+};
+
+// Routes a newly signed-up student to the pending screen and listens for approval
+function routeToPending(uid, email, name) {
+  document.getElementById('pend-em').textContent = email;
+  show('screen-pending');
+  unsubP = onSnapshot(doc(db,'users',uid), s => {
+    if (!s.exists()) {
+      if(unsubP){unsubP();unsubP=null;}
+      signOut(auth).then(()=>{ resetLoginForm(); show('screen-login'); window.showForm('su'); });
+      return;
+    }
+    if (s.data().status === 'approved') {
+      if(unsubP){unsubP();unsubP=null;}
+      showApprovalCelebration(() => {
+        document.getElementById('s-name').textContent = s.data().name || email;
+        show('screen-student'); buildTasks(); listenStudent(uid); initStudentMsgBadge(uid); initStudentMsgBadge(uid);
+      });
+    }
   });
-  cont.innerHTML=h;cont.scrollTop=cont.scrollHeight;
 }
-window.loadSChat=function(){
-  if(!me)return;if(unsubChat){unsubChat();unsubChat=null;}
-  const c=document.getElementById('s-chat-messages');if(!c)return;c.innerHTML='<div class="chat-empty">Loading…</div>';
-  unsubChat=onSnapshot(query(collection(db,'messages'),where('participants','array-contains',me.uid)),snap=>{
-    let msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));msgs.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
-    msgs.forEach(async m=>{if(m.recipientUid===me.uid&&!m.read)try{await updateDoc(doc(db,'messages',m.id),{read:true});}catch(e){}});
-    renderChat(msgs,me.uid,c);
+
+function showApprovalCelebration(onDone) {
+  // Flip the badge to green
+  const bar   = document.getElementById('pend-bar');
+  const txt   = document.getElementById('pend-bar-text');
+  const icon  = document.getElementById('pend-icon');
+  const title = document.getElementById('pend-title');
+  const sub   = document.getElementById('pend-sub');
+  if (bar)   { bar.style.background='#eafaf1'; bar.style.borderColor='#27ae60'; }
+  if (txt)   { txt.style.color='#27ae60'; txt.textContent='✅ Your journey to success begins now!'; }
+  if (icon)  { icon.textContent='🎉'; }
+  if (title) { title.textContent='You\'re Approved!'; title.style.color='#27ae60'; }
+  if (sub)   { sub.textContent='Taking you to your guide in a moment…'; }
+  // Route after 2.5 seconds so they can see and feel the moment
+  setTimeout(onDone, 2500);
+}
+
+window.doReset = async () => {
+  const em = g('si-em');
+  if (!em) { err('si-err','Enter your email above first.','#e8a020'); return; }
+  err('si-err','Sending…','#6b7280');
+  try {
+    await sendPasswordResetEmail(auth, em);
+    err('si-err','✓ Reset email sent to ' + em + '. Check your inbox (and spam folder).','#27ae60');
+  } catch(e) {
+    if (e.code === 'auth/user-not-found') {
+      err('si-err','No account found with that email. Try signing up instead.');
+    } else {
+      err('si-err','Could not send reset email. Make sure the email address is correct.');
+    }
+  }
+};
+
+window.doSignOut = async () => {
+  if(unsubP){unsubP();unsubP=null;}
+  if(unsubA){unsubA();unsubA=null;}
+  closeSb();
+  await signOut(auth);
+  resetLoginForm();
+  show('screen-login');
+};
+
+// showForm MUST be on window — called directly from HTML onclick attributes
+window.showForm = function(id) {
+  ['si','su'].forEach(f => {
+    const form = document.getElementById('form-'+f);
+    const tab  = document.getElementById('tab-'+f);
+    if (form) form.classList.toggle('on', f===id);
+    if (tab)  tab.classList.toggle('on',  f===id);
   });
 };
-window.sendSChat=async function(){if(!me)return;const inp=document.getElementById('s-chat-input');const body=inp?.value?.trim();if(!body)return;inp.value='';const sn=document.getElementById('s-name')?.textContent||me.email;await addDoc(collection(db,'messages'),{senderUid:me.uid,senderName:sn,recipientUid:MID,recipientName:'Mentor',participants:[me.uid,MID],body,createdAt:serverTimestamp(),read:false});};
-async function loadMChatList(){
-  const le=document.getElementById('m-chat-stu-list');if(!le)return;
-  const stus=Object.entries(sem);if(!stus.length){le.innerHTML='<div style="padding:16px;color:var(--muted);font-size:0.84rem;">No approved students yet.</div>';return;}
-  le.innerHTML=stus.map(([uid,s])=>`<div class="chat-stu-item" id="csi-${uid}" onclick="loadMChat('${uid}')"><div class="chat-stu-av">${(s.name||'?')[0].toUpperCase()}</div><div style="flex:1;min-width:0;"><div class="chat-stu-name">${s.name}</div><div class="chat-stu-preview">Tap to open conversation</div></div><span class="chat-stu-badge" id="csb-${uid}" style="display:none;"></span></div>`).join('');
-  stus.forEach(([uid])=>{onSnapshot(query(collection(db,'messages'),where('participants','array-contains',uid),where('recipientUid','==',MID),where('read','==',false)),sn=>{const b=document.getElementById('csb-'+uid);if(b){b.textContent=sn.size;b.style.display=sn.size>0?'inline':'none';}});});
-  if(stuUID&&sem[stuUID])loadMChat(stuUID);
-}
-window.loadMChat=function(uid){
-  if(!uid||!sem[uid])return;acu=uid;const s=sem[uid];
-  document.querySelectorAll('.chat-stu-item').forEach(e=>e.classList.remove('on'));document.getElementById('csi-'+uid)?.classList.add('on');
-  tx('m-chat-name',s.name);tx('m-chat-av',(s.name||'?')[0].toUpperCase());
-  const w=document.getElementById('m-chat-wrap');w.style.display='flex';w.style.flexDirection='column';
-  const c=document.getElementById('m-chat-messages');c.innerHTML='<div class="chat-empty">Loading…</div>';
-  if(unsubChat){unsubChat();unsubChat=null;}
-  unsubChat=onSnapshot(query(collection(db,'messages'),where('participants','array-contains',uid)),snap=>{
-    let msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));msgs.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
-    msgs.forEach(async m=>{if(m.recipientUid===MID&&!m.read)try{await updateDoc(doc(db,'messages',m.id),{read:true});}catch(e){}});
-    renderChat(msgs,MID,c);
-  });
-};
-window.sendMChat=async function(){if(!acu)return;const inp=document.getElementById('m-chat-input');const body=inp?.value?.trim();if(!body)return;inp.value='';const s=sem[acu];await addDoc(collection(db,'messages'),{senderUid:MID,senderName:'Mentor',recipientUid:acu,recipientName:s?.name||'Student',participants:[acu,MID],body,createdAt:serverTimestamp(),read:false});};
 
-async function loadMentor(){
+function resetLoginForm() {
+  dis('si-btn', false, 'Sign In');
+  dis('su-btn', false, 'Sign Up');
+  err('si-err', '');
+  err('su-err', '');
+  ['si-em','si-pw','su-nm','su-em','su-pw'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  window.showForm('si');
+}
+
+// ── STUDENT ──────────────────────────────────────────
+function buildTasks() {
+  let h='', cm=0, cg='';
+  TASKS.forEach(t=>{
+    if(t.m!==cm){
+      if(cm) h+='</div>';
+      h+=`<div class="mb"><div class="mb-t">${ML[t.m]}</div><div class="mb-n">0${t.m}</div></div><div>`;
+      cm=t.m; cg='';
+    }
+    if(t.g!==cg){h+=`<div class="tgt">${t.g}</div>`;cg=t.g;}
+    h+=`<div class="ti" id="ti-${t.id}">
+      <div class="tc" onclick="tog('${t.id}')"><svg width="11" height="11" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2.5" fill="none"/></svg></div>
+      <div class="tb2">
+        <div class="tt">${t.txt}</div>
+        ${t.h?`<div class="th">${t.h}</div>`:''}
+        <div class="tnr">
+          <input class="tni" id="ni-${t.id}" type="text" placeholder="Add a note or link for your mentor…" oninput="uns('${t.id}')"/>
+          <button class="tsb" id="nb-${t.id}" onclick="sn('${t.id}')">Save</button>
+        </div>
+        <div class="mfb" id="fb-${t.id}" style="display:none"></div>
+      </div>
+    </div>`;
+  });
+  h+='</div>';
+  document.getElementById('task-list').innerHTML=h;
+}
+
+function listenStudent(uid) {
+  if(unsubP) unsubP();
+  unsubP = onSnapshot(collection(db,'progress',uid,'tasks'), snap=>{
+    const d={};
+    snap.forEach(x=>{d[x.id]=x.data();});
+    TASKS.forEach(t=>{
+      const el=document.getElementById('ti-'+t.id); if(!el) return;
+      const e=d[t.id]||{};
+      el.classList.toggle('done',!!e.done);
+      const ni=document.getElementById('ni-'+t.id);
+      if(ni&&e.note!==undefined&&ni!==document.activeElement) ni.value=e.note||'';
+      const fb=document.getElementById('fb-'+t.id);
+      if(fb){if(e.mentorComment){fb.style.display='block';fb.innerHTML=`<strong>Mentor:</strong> ${e.mentorComment}`;}else fb.style.display='none';}
+    });
+    const done=TASKS.filter(t=>d[t.id]?.done).length;
+    const pct=Math.round(done/TASKS.length*100);
+    tx('s-pct',pct+'%'); tx('s-sub',done+' / '+TASKS.length+' tasks done');
+    bw('s-bar',pct);
+  });
+}
+
+window.tog = async id=>{
+  if(!me) return;
+  const r=doc(db,'progress',me.uid,'tasks',id);
+  const s=await getDoc(r);
+  await setDoc(r,{done:!(s.exists()&&s.data().done),updatedAt:serverTimestamp()},{merge:true});
+};
+window.uns = id=>document.getElementById('nb-'+id).classList.add('uns');
+window.sn = async id=>{
+  if(!me) return;
+  const note=document.getElementById('ni-'+id).value;
+  await setDoc(doc(db,'progress',me.uid,'tasks',id),{note,updatedAt:serverTimestamp()},{merge:true});
+  const b=document.getElementById('nb-'+id);
+  b.classList.remove('uns'); b.textContent='Saved ✓';
+  setTimeout(()=>b.textContent='Save',2000);
+};
+
+// ── MENTOR ───────────────────────────────────────────
+async function loadMentor() {
+  mMsgTab('inbox');
   listenApprovals();
-  const snap=await getDocs(collection(db,'users'));const stus=[];snap.forEach(d=>{if(d.data().role==='student'&&d.data().status==='approved')stus.push({uid:d.id,...d.data()});});
-  stus.forEach(s=>{sem[s.uid]={name:s.name,email:s.email};});
-  renderStuTabs(stus);if(stus.length)pickStu(stus[0].uid,stus[0].name);else document.getElementById('m-tasks').innerHTML='<div class="ib" style="margin:24px 0;">No approved students yet.</div>';
-  loadMChatList();
+  const snap=await getDocs(collection(db,'users'));
+  const stus=[];
+  snap.forEach(d=>{if(d.data().role==='student'&&d.data().status==='approved') stus.push({uid:d.id,...d.data()});});
+  renderStuTabs(stus);
+  if(stus.length) pickStu(stus[0].uid, stus[0].name);
+  else document.getElementById('m-tasks').innerHTML='<div class="ib" style="margin:24px 0;">No approved students yet. Approve a student above to see their tasks here.</div>';
 }
-function listenApprovals(){unsubA=onSnapshot(collection(db,'users'),snap=>{const p=[];snap.forEach(d=>{if(d.data().role==='student'&&d.data().status==='pending')p.push({uid:d.id,...d.data()});});renderApprovals(p);});}
-function renderApprovals(p){const badge=document.getElementById('pend-badge'),box=document.getElementById('appr-box');if(badge){badge.textContent=p.length||'';badge.style.display=p.length?'inline-block':'none';}if(!box)return;if(!p.length){box.style.display='none';return;}box.style.display='block';box.innerHTML=`<div class="aph">🔔 ${p.length} student${p.length>1?'s':''} waiting for approval</div>`+p.map(x=>`<div class="apr"><div><div class="apn">${x.name}</div><div class="ape">${x.email}</div></div><div class="apa"><button class="apok" onclick="approveStu('${x.uid}','${x.name}')">✓ Approve</button><button class="apno" onclick="declineStu('${x.uid}')">✕ Decline</button></div></div>`).join('');}
-function renderStuTabs(stus){const box=document.getElementById('stu-sel');if(box){if(!stus.length){box.innerHTML='<div style="font-size:0.78rem;color:var(--muted);padding:10px 0;">No approved students yet</div>';}else{box.innerHTML=stus.map(s=>`<div style="display:flex;align-items:center;gap:5px;"><div class="stab" id="stab-${s.uid}" onclick="pickStu('${s.uid}','${s.name}')">👤 ${s.name}</div><button class="del-btn" onclick="deleteStu('${s.uid}','${s.name}')">✕</button></div>`).join('');}}renderSbStudents(stus);}
-function renderSbStudents(stus){const box=document.getElementById('sb-students');if(!box)return;if(!stus.length){box.innerHTML='<div style="padding:6px 20px;font-size:0.78rem;color:rgba(255,255,255,0.28);">No students yet</div>';return;}box.innerHTML=stus.map(s=>`<div style="display:flex;align-items:center;padding-right:12px;"><a class="ni" id="sbstu-${s.uid}" style="flex:1;" onclick="pickStu('${s.uid}','${s.name}')">👤 ${s.name}</a><button onclick="deleteStu('${s.uid}','${s.name}')" style="background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;font-size:0.8rem;padding:4px 6px;" onmouseover="this.style.color='#e74c3c'" onmouseout="this.style.color='rgba(255,255,255,0.25)'">✕</button></div>`).join('');}
-window.pickStu=(uid,name)=>{stuUID=uid;document.querySelectorAll('[id^="sbstu-"]').forEach(t=>t.classList.remove('on'));document.getElementById('sbstu-'+uid)?.classList.add('on');document.querySelectorAll('.stab').forEach(t=>t.classList.remove('on'));document.getElementById('stab-'+uid)?.classList.add('on');document.getElementById('m-title').innerHTML=name+"'s <em>Progress</em>";buildMTasks();listenMentor();};
-window.approveStu=async(uid,name)=>{await setDoc(doc(db,'users',uid),{status:'approved'},{merge:true});const s2=await getDoc(doc(db,'users',uid));if(s2.exists())sendApprovalEmail(s2.data().name,s2.data().email);const snap=await getDocs(collection(db,'users'));const stus=[];snap.forEach(d=>{if(d.data().role==='student'&&d.data().status==='approved')stus.push({uid:d.id,...d.data()});});stus.forEach(s=>{sem[s.uid]={name:s.name,email:s.email};});renderStuTabs(stus);loadMChatList();if(!stuUID)pickStu(uid,name);};
-window.declineStu=async uid=>{if(!confirm('Decline this student?'))return;await deleteDoc(doc(db,'users',uid));};
-window.deleteStu=async(uid,name)=>{if(!confirm(`Remove ${name} from the platform?`))return;await setDoc(doc(db,'users',uid),{status:'deleted'},{merge:true});const snap=await getDocs(collection(db,'users'));const stus=[];snap.forEach(d=>{if(d.data().role==='student'&&d.data().status==='approved')stus.push({uid:d.id,...d.data()});});stus.forEach(s=>{sem[s.uid]={name:s.name,email:s.email};});renderStuTabs(stus);renderSbStudents(stus);if(stuUID===uid){stuUID=null;document.getElementById('m-title').innerHTML='Student <em>Progress</em>';if(stus.length)pickStu(stus[0].uid,stus[0].name);else document.getElementById('m-tasks').innerHTML='<div class="ib" style="margin:24px 0;">No approved students yet.</div>';}};
-function buildMTasks(){const box=document.getElementById('m-tasks');let h='',cm=0,cg='';TASKS.forEach(t=>{if(t.m!==cm){if(cm)h+='</div>';h+=`<div class="mmh">Month ${t.m}</div><div>`;cm=t.m;cg='';}if(t.g!==cg){h+=`<div class="tgt">${t.g}</div>`;cg=t.g;}h+=`<div class="mr" id="mr-${t.id}"><div class="md" id="md-${t.id}"></div><div class="mi"><div class="mt2">${t.txt}</div><div class="mm" id="mm-${t.id}">Not yet completed</div><div class="mns" id="mn-${t.id}" style="display:none"></div><div class="mfr"><input class="mfi" id="mfi-${t.id}" type="text" placeholder="Leave feedback for student…"/><button class="mfbt" onclick="sfb('${t.id}')">Send</button></div></div></div>`;});h+='</div>';box.innerHTML=h;}
-function listenMentor(){if(!stuUID)return;if(unsubP)unsubP();unsubP=onSnapshot(collection(db,'progress',stuUID,'tasks'),snap=>{const d={};snap.forEach(x=>{d[x.id]=x.data();});TASKS.forEach(t=>{const e=d[t.id]||{};const dot=document.getElementById('md-'+t.id),meta=document.getElementById('mm-'+t.id),note=document.getElementById('mn-'+t.id),row=document.getElementById('mr-'+t.id),inp=document.getElementById('mfi-'+t.id);if(!dot)return;const done=!!e.done;dot.className='md'+(done?' done':'');if(row)row.classList.toggle('done',done);if(meta){if(done&&e.updatedAt){const dt=e.updatedAt.toDate?e.updatedAt.toDate():new Date();meta.textContent='Completed '+dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}else meta.textContent='Not yet completed';}if(note){if(e.note){note.style.display='block';note.innerHTML=`<strong>Student note:</strong> ${e.note}`;}else note.style.display='none';}if(inp&&e.mentorComment&&inp!==document.activeElement)inp.value=e.mentorComment;});const done=TASKS.filter(t=>d[t.id]?.done).length,pct=Math.round(done/TASKS.length*100);tx('m-pct',pct+'%');tx('m-sub',done+' of '+TASKS.length+' tasks');tx('m-pct2',pct+'%');tx('m-done',done);tx('m-left',TASKS.length-done);bw('m-bar',pct);bw('m-bar2',pct);[1,2,3,4,5,6].forEach(mn=>{const mt=TASKS.filter(t=>t.m===mn);tx('ms'+mn,mt.filter(t=>d[t.id]?.done).length+'/'+mt.length);});});}
-window.sfb=async id=>{if(!stuUID)return;const c=document.getElementById('mfi-'+id).value;await setDoc(doc(db,'progress',stuUID,'tasks',id),{mentorComment:c,mentorCommentAt:serverTimestamp()},{merge:true});const b=document.querySelector(`button[onclick="sfb('${id}')"]`);if(b){b.textContent='Sent ✓';setTimeout(()=>b.textContent='Send',2000);}};
 
-function initSBadge(uid){return onSnapshot(query(collection(db,'messages'),where('participants','array-contains',uid),where('recipientUid','==',uid),where('read','==',false)),snap=>{const u=snap.size;const b=document.getElementById('s-msg-badge');if(b){b.textContent=u;b.style.display=u>0?'inline':'none';}setAppBadge(u);});}
-function initMBadge(){return onSnapshot(query(collection(db,'messages'),where('recipientUid','==',MID),where('read','==',false)),snap=>{const u=snap.size;const b=document.getElementById('m-msg-badge');if(b){b.textContent=u;b.style.display=u>0?'inline-block':'none';}setAppBadge(u);});}
+function listenApprovals() {
+  unsubA = onSnapshot(collection(db,'users'), snap=>{
+    const p=[];
+    snap.forEach(d=>{if(d.data().role==='student'&&d.data().status==='pending') p.push({uid:d.id,...d.data()});});
+    renderApprovals(p);
+  });
+}
 
-let ptc=0,ptt=null;
-window.pendingTap=function(){ptc++;clearTimeout(ptt);ptt=setTimeout(()=>{ptc=0;},3000);if(ptc>=5){ptc=0;if(unsubP){unsubP();unsubP=null;}doSignOut();}};
-window.togglePw=function(id,btn){const i=document.getElementById(id);if(!i)return;if(i.type==='password'){i.type='text';btn.textContent='🙈';}else{i.type='password';btn.textContent='👁';}};
-function setAppBadge(n){if('setAppBadge'in navigator){if(n>0)navigator.setAppBadge(n).catch(()=>{});else navigator.clearAppBadge().catch(()=>{});}}
+function renderApprovals(p) {
+  const badge=document.getElementById('pend-badge');
+  const box=document.getElementById('appr-box');
+  if(badge){badge.textContent=p.length||'';badge.style.display=p.length?'inline-block':'none';}
+  if(!box) return;
+  if(!p.length){box.style.display='none';return;}
+  box.style.display='block';
+  box.innerHTML=`<div class="aph">🔔 ${p.length} student${p.length>1?'s':''} waiting for approval</div>`
+    +p.map(x=>`<div class="apr"><div><div class="apn">${x.name}</div><div class="ape">${x.email}</div></div><div class="apa"><button class="apok" onclick="approveStu('${x.uid}','${x.name}')">✓ Approve</button><button class="apno" onclick="declineStu('${x.uid}')">✕ Decline</button></div></div>`).join('');
+}
+
+function renderStuTabs(stus) {
+  const box=document.getElementById('stu-sel');
+  if(!box) return;
+  if(!stus.length){box.innerHTML='<div style="font-size:0.78rem;color:var(--muted);padding:10px 0;">No approved students yet</div>';return;}
+  box.innerHTML=stus.map(s=>`<div style="display:flex;align-items:center;gap:5px;"><div class="stab" id="stab-${s.uid}" onclick="pickStu('${s.uid}','${s.name}')">👤 ${s.name}</div><button class="del-btn" onclick="deleteStu('${s.uid}','${s.name}')" title="Remove this student">✕</button></div>`).join('');
+  populateMsgDropdown(stus);
+  renderSbStudents(stus);
+}
+
+function renderSbStudents(stus) {
+  const box = document.getElementById('sb-students');
+  if (!box) return;
+  if (!stus.length) {
+    box.innerHTML = '<div style="padding:6px 20px;font-size:0.78rem;color:rgba(255,255,255,0.28);">No students yet</div>';
+    return;
+  }
+  box.innerHTML = stus.map(s => `
+    <div style="display:flex;align-items:center;padding-right:12px;">
+      <a class="ni" id="sbstu-${s.uid}" style="flex:1;" onclick="pickStu('${s.uid}','${s.name}')">👤 ${s.name}</a>
+      <button onclick="deleteStu('${s.uid}','${s.name}')" style="background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;font-size:0.8rem;padding:4px 6px;border-radius:4px;transition:all .2s;" onmouseover="this.style.color='#e74c3c'" onmouseout="this.style.color='rgba(255,255,255,0.25)'" title="Remove student">✕</button>
+    </div>`).join('');
+}
+
+window.pickStu = (uid,name)=>{
+  stuUID=uid;
+  // Highlight in sidebar
+  document.querySelectorAll('[id^="sbstu-"]').forEach(t=>t.classList.remove('on'));
+  const sbItem=document.getElementById('sbstu-'+uid); if(sbItem) sbItem.classList.add('on');
+  // Legacy tab highlight
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('on'));
+  const tab=document.getElementById('stab-'+uid); if(tab) tab.classList.add('on');
+  document.getElementById('m-title').innerHTML=name+"'s <em>Progress</em>";
+  buildMentorTasks();
+  listenMentor();
+};
+
+window.approveStu = async(uid,name)=>{
+  await setDoc(doc(db,'users',uid),{status:'approved'},{merge:true});
+  // Get student email and send approval notification
+  const snap2 = await getDoc(doc(db,'users',uid));
+  if(snap2.exists()) sendApprovalEmail(snap2.data().name, snap2.data().email);
+  const snap=await getDocs(collection(db,'users'));
+  const stus=[];
+  snap.forEach(d=>{if(d.data().role==='student'&&d.data().status==='approved') stus.push({uid:d.id,...d.data()});});
+  renderStuTabs(stus);
+  if(!stuUID) pickStu(uid,name);
+};
+window.declineStu = async uid => {
+  if(!confirm('Decline this student? They will be silently redirected to sign up again.')) return;
+  // Delete their Firestore doc entirely — they can sign up freely again
+  await deleteDoc(doc(db,'users',uid));
+};
+
+window.deleteStu = async (uid, name) => {
+  if(!confirm(`Remove ${name} from the platform?\n\nThey will be blocked from signing in. If they sign up again with the same email, their progress will be restored.`)) return;
+  // Mark as deleted — preserve all progress data so it can be recalled on re-registration
+  await setDoc(doc(db,'users',uid),{status:'deleted'},{merge:true});
+  // Refresh student list
+  const snap = await getDocs(collection(db,'users'));
+  const stus = [];
+  snap.forEach(d=>{if(d.data().role==='student'&&d.data().status==='approved') stus.push({uid:d.id,...d.data()});});
+  renderStuTabs(stus);
+  renderSbStudents(stus);
+  if(stuUID === uid) {
+    stuUID = null;
+    document.getElementById('m-title').innerHTML = 'Student <em>Progress</em>';
+    if(stus.length) pickStu(stus[0].uid, stus[0].name);
+    else document.getElementById('m-tasks').innerHTML='<div class="ib" style="margin:24px 0;">No approved students yet.</div>';
+  }
+};
+
+function buildMentorTasks() {
+  const box=document.getElementById('m-tasks');
+  let h='',cm=0,cg='';
+  TASKS.forEach(t=>{
+    if(t.m!==cm){
+      if(cm) h+='</div>';
+      h+=`<div class="mmh">Month ${t.m}</div><div>`;
+      cm=t.m; cg='';
+    }
+    if(t.g!==cg){h+=`<div class="tgt">${t.g}</div>`;cg=t.g;}
+    h+=`<div class="mr" id="mr-${t.id}">
+      <div class="md" id="md-${t.id}"></div>
+      <div class="mi">
+        <div class="mt2">${t.txt}</div>
+        <div class="mm" id="mm-${t.id}">Not yet completed</div>
+        <div class="mns" id="mn-${t.id}" style="display:none"></div>
+        <div class="mfr">
+          <input class="mfi" id="mfi-${t.id}" type="text" placeholder="Leave feedback for student…"/>
+          <button class="mfbt" onclick="sfb('${t.id}')">Send</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  h+='</div>';
+  box.innerHTML=h;
+}
+
+function listenMentor() {
+  if(!stuUID) return;
+  if(unsubP) unsubP();
+  unsubP=onSnapshot(collection(db,'progress',stuUID,'tasks'), snap=>{
+    const d={};
+    snap.forEach(x=>{d[x.id]=x.data();});
+    TASKS.forEach(t=>{
+      const e=d[t.id]||{};
+      const dot=document.getElementById('md-'+t.id);
+      const meta=document.getElementById('mm-'+t.id);
+      const note=document.getElementById('mn-'+t.id);
+      const row=document.getElementById('mr-'+t.id);
+      const inp=document.getElementById('mfi-'+t.id);
+      if(!dot) return;
+      const done=!!e.done;
+      dot.className='md'+(done?' done':'');
+      if(row) row.classList.toggle('done',done);
+      if(meta){if(done&&e.updatedAt){const dt=e.updatedAt.toDate?e.updatedAt.toDate():new Date();meta.textContent='Completed '+dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}else meta.textContent='Not yet completed';}
+      if(note){if(e.note){note.style.display='block';note.innerHTML=`<strong>Student's note:</strong> ${e.note}`;}else note.style.display='none';}
+      if(inp&&e.mentorComment&&inp!==document.activeElement) inp.value=e.mentorComment;
+    });
+    const done=TASKS.filter(t=>d[t.id]?.done).length;
+    const pct=Math.round(done/TASKS.length*100);
+    tx('m-pct',pct+'%'); tx('m-sub',done+' of '+TASKS.length+' tasks');
+    tx('m-pct2',pct+'%'); tx('m-done',done); tx('m-left',TASKS.length-done);
+    bw('m-bar',pct); bw('m-bar2',pct);
+    [1,2,3,4,5,6].forEach(mn=>{
+      const mt=TASKS.filter(t=>t.m===mn);
+      tx('ms'+mn, mt.filter(t=>d[t.id]?.done).length+'/'+mt.length);
+    });
+  });
+}
+
+window.sfb = async id=>{
+  if(!stuUID) return;
+  const c=document.getElementById('mfi-'+id).value;
+  await setDoc(doc(db,'progress',stuUID,'tasks',id),{mentorComment:c,mentorCommentAt:serverTimestamp()},{merge:true});
+  const b=document.querySelector(`button[onclick="sfb('${id}')"]`);
+  if(b){b.textContent='Sent ✓';setTimeout(()=>b.textContent='Send',2000);}
+};
+
+// Hidden 5-tap escape on the pending screen (for mentor testing)
+let pendingTapCount = 0;
+let pendingTapTimer = null;
+window.pendingTap = function() {
+  pendingTapCount++;
+  const hint = document.getElementById('pend-tap-hint');
+  const remaining = 5 - pendingTapCount;
+  // Reset counter after 3 seconds of inactivity
+  clearTimeout(pendingTapTimer);
+  pendingTapTimer = setTimeout(() => {
+    pendingTapCount = 0;
+    if (hint) hint.style.color = 'transparent';
+  }, 3000);
+  if (pendingTapCount >= 2 && pendingTapCount < 5) {
+    // Show a subtle hint as they get closer
+    if (hint) { hint.style.color = '#ddd'; hint.textContent = remaining + ' more…'; }
+  }
+  if (pendingTapCount >= 5) {
+    pendingTapCount = 0;
+    if (hint) { hint.style.color = 'transparent'; }
+    if (unsubP) { unsubP(); unsubP = null; }
+    doSignOut();
+  }
+};
+let stuEmailMap = {}; // uid → {name, email}
+
+function populateMsgDropdown(stus) {
+  // Always fill stuEmailMap first — needed for compose dropdown
+  stus.forEach(s => { stuEmailMap[s.uid] = {name: s.name, email: s.email}; });
+  const sel = document.getElementById('msg-to');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Select a student —</option>';
+  stus.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.uid;
+    opt.textContent = s.name + ' (' + s.email + ')';
+    sel.appendChild(opt);
+  });
+  if (prev) sel.value = prev;
+}
+
+const TEMPLATES = {
+  weekly:    { sub: 'Weekly check-in — how are you getting on?', body: `Hi,\n\nJust checking in on your progress this week. Have you had a chance to work through your current tasks?\n\nIf you're stuck on anything or need guidance, please don't hesitate to reach out. Small consistent steps every week will get you there.\n\nKeep going!\n\nYour mentor` },
+  motivate:  { sub: 'You can do this — a word of encouragement', body: `Hi,\n\nI just wanted to take a moment to remind you that what you're working toward is completely achievable. Many students from similar backgrounds have gone on to get fully funded places at universities in Canada, Germany, and beyond.\n\nThe key is consistency. Keep showing up, keep completing your tasks, and trust the process.\n\nI'm here to support you every step of the way.\n\nYour mentor` },
+  deadline:  { sub: 'Upcoming deadline — please take action', body: `Hi,\n\nThis is a reminder that there is an important deadline coming up soon. Please check your task list and make sure you have everything in order.\n\nIf you haven't started on this yet, now is the time. Don't leave it to the last day.\n\nLet me know if you need help with anything.\n\nYour mentor` },
+  sop:       { sub: 'Your SOP feedback is ready', body: `Hi,\n\nI have reviewed your Statement of Purpose draft and I have some feedback for you.\n\nPlease log into the app, go to your task notes, and check my comments. I've left detailed feedback there. Read it carefully, then revise and share the updated version with me.\n\nYour SOP is the most important document in your application — take your time with the revision.\n\nYour mentor` },
+  professor: { sub: 'Tip: how to email a professor effectively', body: `Hi,\n\nI wanted to share a quick reminder about emailing professors. The most important rule is: personalise every single email.\n\nMention their specific paper by title. Write one sentence about what you found interesting. Keep the whole email under 200 words. Professors receive hundreds of emails — make yours stand out by showing you actually read their work.\n\nCheck Module 4 in the app for the full template. Good luck!\n\nYour mentor` }
+};
+
+window.setTemplate = (type) => {
+  const t = TEMPLATES[type];
+  if (!t) return;
+  document.getElementById('msg-subject').value = t.sub;
+  document.getElementById('msg-body').value = t.body;
+};
+
+window.sendMentorMsg = async () => {
+  const uid = document.getElementById('msg-to').value;
+  const subject = document.getElementById('msg-subject').value.trim();
+  const body = document.getElementById('msg-body').value.trim();
+  const statusEl = document.getElementById('msg-status');
+
+  if (!uid) { statusEl.textContent = '⚠️ Please select a student.'; statusEl.style.color='#e74c3c'; return; }
+  if (!subject) { statusEl.textContent = '⚠️ Please enter a subject.'; statusEl.style.color='#e74c3c'; return; }
+  if (!body) { statusEl.textContent = '⚠️ Please write a message.'; statusEl.style.color='#e74c3c'; return; }
+
+  const stu = stuEmailMap[uid];
+  if (!stu) { statusEl.textContent = '⚠️ Student not found.'; return; }
+
+  statusEl.textContent = 'Sending…'; statusEl.style.color = 'var(--muted)';
+
+  try {
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TMPL_NEW, {
+      to_email:      stu.email,
+      subject:       subject,
+      header_label:  'Message from your Mentor',
+      icon:          '✉',
+      icon_bg:       '#e6f1fb',
+      headline:      'A message from your mentor',
+      body_text:     body.replace(/\n/g, '<br>'),
+      student_name:  stu.name,
+      student_email: stu.email,
+      tip_text:      'Log in to the app to check your tasks and progress: ' + APP_URL,
+      button_text:   'Open Path Abroad →',
+      app_url:       APP_URL
+    });
+    statusEl.textContent = '✓ Message sent to ' + stu.name + '!';
+    statusEl.style.color = '#27ae60';
+    // Clear the form
+    document.getElementById('msg-subject').value = '';
+    document.getElementById('msg-body').value = '';
+    setTimeout(() => { statusEl.textContent = ''; }, 4000);
+  } catch(e) {
+    statusEl.textContent = '✗ Failed to send. Check your EmailJS setup.';
+    statusEl.style.color = '#e74c3c';
+  }
+};
+// ── IN-APP MESSAGING ──────────────────────────────────
+const MENTOR_ID = 'MENTOR';
+let unsubSMsgs = null, unsubMMsgs = null;
+
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date((ts.seconds||0)*1000);
+  const diff = Date.now() - d;
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  if (diff < 604800000) return d.toLocaleDateString('en-GB',{weekday:'short'});
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+}
+
+function msgRow(m, isSent) {
+  const name = isSent ? ('To: '+(m.recipientName||'?')) : (m.senderName||'?');
+  const av = (isSent?(m.recipientName||'?'):(m.senderName||'?'))[0].toUpperCase();
+  const avBg = isSent ? 'background:#27ae60;' : '';
+  const unread = !isSent && !m.read;
+  return `<div class="msg-row${unread?' unread':''}" onclick="openMsg('${m.id}','${isSent?'sent':'inbox'}')">
+    ${unread?'<div class="msg-unread-dot"></div>':'<div class="msg-dot-placeholder"></div>'}
+    <div class="msg-avatar" style="${avBg}">${av}</div>
+    <div class="msg-row-meta">
+      <div class="msg-row-from">${name}</div>
+      <div class="msg-row-subject">${m.subject||'(no subject)'}</div>
+      <div class="msg-row-preview">${(m.body||'').substring(0,80)}</div>
+    </div>
+    <div class="msg-row-time">${fmtTime(m.createdAt)}</div>
+  </div>`;
+}
+
+window.openMsg = async function(msgId, box) {
+  const snap = await getDoc(doc(db,'messages',msgId));
+  if (!snap.exists()) return;
+  const msg = {id:snap.id,...snap.data()};
+  const listEl = isMentor ? document.getElementById('m-msg-list') : document.getElementById('s-msg-list');
+  const toolbarEl = isMentor ? document.getElementById('m-msg-toolbar') : document.getElementById('s-msg-toolbar');
+  const amRecipient = isMentor ? msg.recipientUid===MENTOR_ID : msg.recipientUid===me.uid;
+  if (amRecipient && !msg.read) await updateDoc(doc(db,'messages',msgId),{read:true});
+  const backFn = isMentor ? "mMsgTab('inbox')" : "sMsgTab('inbox')";
+  const replyToUid = msg.senderUid===(isMentor?MENTOR_ID:me.uid) ? msg.recipientUid : msg.senderUid;
+  const replyToName = (msg.senderUid===(isMentor?MENTOR_ID:me.uid) ? msg.recipientName : msg.senderName)||'?';
+  const reSubject = ('Re: '+(msg.subject||'')).replace(/'/g,"\\'");
+  const safeToName = replyToName.replace(/'/g,"\\'");
+  if(toolbarEl) toolbarEl.style.display='none';
+  listEl.innerHTML=`<div class="msg-detail-wrap">
+    <div class="msg-back" onclick="${backFn}">← Back</div>
+    <div class="msg-detail-subject">${msg.subject||'(no subject)'}</div>
+    <div class="msg-detail-meta">
+      <span>From: <strong>${msg.senderName}</strong></span>
+      <span>·</span><span>To: <strong>${msg.recipientName}</strong></span>
+      <span>·</span><span>${fmtTime(msg.createdAt)}</span>
+    </div>
+    <div class="msg-detail-body">${msg.body||''}</div>
+    <div class="msg-reply-box">
+      <div class="msg-reply-label">Reply to ${replyToName}</div>
+      <textarea id="reply-body" class="msg-input" rows="4" placeholder="Write your reply…" style="resize:vertical;"></textarea>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="msg-send-btn" onclick="sendReply('${replyToUid}','${safeToName}','${reSubject}')">Send Reply</button>
+        <span id="reply-status" style="font-size:0.8rem;"></span>
+      </div>
+    </div>
+  </div>`;
+};
+
+window.sendReply = async function(toUid, toName, subject) {
+  const body = document.getElementById('reply-body')?.value?.trim();
+  const st = document.getElementById('reply-status');
+  if(!body){if(st){st.textContent='Please write a reply.';st.style.color='#e74c3c';}return;}
+  if(st){st.textContent='Sending…';st.style.color='#888';}
+  const senderUid = isMentor ? MENTOR_ID : me.uid;
+  const senderName = isMentor ? 'Mentor' : (document.getElementById('s-name')?.textContent||me.email);
+  await addDoc(collection(db,'messages'),{senderUid,senderName,recipientUid:toUid,recipientName:toName,subject,body,createdAt:serverTimestamp(),read:false});
+  if(st){st.textContent='✓ Sent!';st.style.color='#27ae60';}
+  setTimeout(()=>{
+    if(isMentor){document.getElementById('m-msg-toolbar').style.display='';mMsgTab('sent');}
+    else{document.getElementById('s-msg-toolbar').style.display='';sMsgTab('sent');}
+  },1500);
+};
+
+window.sMsgTab = function(view) {
+  const tabs=document.querySelectorAll('#s-msg-toolbar .msg-tab');
+  tabs.forEach(t=>t.classList.remove('on'));
+  const toolbar=document.getElementById('s-msg-toolbar');
+  if(toolbar) toolbar.style.display='';
+  if(view==='inbox'){if(tabs[0])tabs[0].classList.add('on');loadSInbox();}
+  else if(view==='sent'){if(tabs[1])tabs[1].classList.add('on');loadSSent();}
+  else if(view==='compose') showSCompose();
+};
+function loadSInbox(){
+  if(unsubSMsgs){unsubSMsgs();unsubSMsgs=null;}
+  const list=document.getElementById('s-msg-list');
+  if(!list)return;
+  list.innerHTML='<div class="msg-empty">Loading…</div>';
+  unsubSMsgs=onSnapshot(query(collection(db,'messages'),where('recipientUid','==',me.uid)),snap=>{
+    const msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));
+    msgs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    const unread=msgs.filter(m=>!m.read).length;
+    const badge=document.getElementById('s-msg-badge');
+    const cnt=document.getElementById('s-inbox-count');
+    if(badge){badge.textContent=unread;badge.style.display=unread>0?'inline':'none';}
+    if(cnt) cnt.textContent=unread>0?` (${unread})`:''; setAppBadge(unread);
+    list.innerHTML=msgs.length?msgs.map(m=>msgRow(m,false)).join(''):'<div class="msg-empty">No messages yet. Your mentor will reach out here.</div>';
+  });
+}
+function loadSSent(){
+  if(unsubSMsgs){unsubSMsgs();unsubSMsgs=null;}
+  const list=document.getElementById('s-msg-list');
+  if(!list)return;
+  list.innerHTML='<div class="msg-empty">Loading…</div>';
+  unsubSMsgs=onSnapshot(query(collection(db,'messages'),where('senderUid','==',me.uid)),snap=>{
+    const msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));
+    msgs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    list.innerHTML=msgs.length?msgs.map(m=>msgRow(m,true)).join(''):'<div class="msg-empty">No sent messages yet.</div>';
+  });
+}
+function showSCompose(){
+  if(unsubSMsgs){unsubSMsgs();unsubSMsgs=null;}
+  const toolbar=document.getElementById('s-msg-toolbar');
+  if(toolbar)toolbar.style.display='none';
+  document.getElementById('s-msg-list').innerHTML=`<div class="msg-compose-wrap">
+    <div class="msg-back" onclick="sMsgTab('inbox')">← Back</div>
+    <label class="msg-flabel">To</label>
+    <input class="msg-input" value="Mentor" disabled style="background:#f5f0e8;color:var(--muted);"/>
+    <label class="msg-flabel">Subject</label>
+    <input class="msg-input" id="sc-subject" placeholder="What is this about?"/>
+    <label class="msg-flabel">Message</label>
+    <textarea class="msg-input" id="sc-body" rows="6" placeholder="Write your message…" style="resize:vertical;"></textarea>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="msg-send-btn" onclick="doSendSMsg()">Send Message</button>
+      <span id="sc-status" style="font-size:0.8rem;"></span>
+    </div>
+  </div>`;
+}
+window.doSendSMsg=async function(){
+  const subject=document.getElementById('sc-subject')?.value?.trim();
+  const body=document.getElementById('sc-body')?.value?.trim();
+  const st=document.getElementById('sc-status');
+  if(!subject){if(st){st.textContent='Please enter a subject.';st.style.color='#e74c3c';}return;}
+  if(!body){if(st){st.textContent='Please write a message.';st.style.color='#e74c3c';}return;}
+  if(st){st.textContent='Sending…';st.style.color='#888';}
+  const senderName=document.getElementById('s-name')?.textContent||me.email;
+  await addDoc(collection(db,'messages'),{senderUid:me.uid,senderName,recipientUid:MENTOR_ID,recipientName:'Mentor',subject,body,createdAt:serverTimestamp(),read:false});
+  if(st){st.textContent='✓ Sent!';st.style.color='#27ae60';}
+  setTimeout(()=>{document.getElementById('s-msg-toolbar').style.display='';sMsgTab('sent');},1500);
+};
+
+window.mMsgTab=function(view){
+  const tabs=document.querySelectorAll('#m-msg-toolbar .msg-tab');
+  tabs.forEach(t=>t.classList.remove('on'));
+  const toolbar=document.getElementById('m-msg-toolbar');
+  if(toolbar)toolbar.style.display='';
+  if(view==='inbox'){if(tabs[0])tabs[0].classList.add('on');loadMInbox();}
+  else if(view==='sent'){if(tabs[1])tabs[1].classList.add('on');loadMSent();}
+  else if(view==='compose') showMCompose();
+};
+function loadMInbox(){
+  if(unsubMMsgs){unsubMMsgs();unsubMMsgs=null;}
+  const list=document.getElementById('m-msg-list');
+  if(!list)return;
+  list.innerHTML='<div class="msg-empty">Loading…</div>';
+  unsubMMsgs=onSnapshot(query(collection(db,'messages'),where('recipientUid','==',MENTOR_ID)),snap=>{
+    let msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));
+    if(stuUID) msgs=msgs.filter(m=>m.senderUid===stuUID); // filter by selected student
+    msgs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    const unread=msgs.filter(m=>!m.read).length;
+    const badge=document.getElementById('m-msg-badge');
+    const cnt=document.getElementById('m-inbox-count');
+    if(badge){badge.textContent=unread;badge.style.display=unread>0?'inline-block':'none';}
+    if(cnt)cnt.textContent=unread>0?` (${unread})`:''; setAppBadge(unread);
+    const stuName = stuUID && stuEmailMap[stuUID]?.name ? stuEmailMap[stuUID].name : 'any student';
+    list.innerHTML=msgs.length?msgs.map(m=>msgRow(m,false)).join(''):`<div class="msg-empty">No messages from ${stuName} yet.</div>`;
+  });
+}
+function loadMSent(){
+  if(unsubMMsgs){unsubMMsgs();unsubMMsgs=null;}
+  const list=document.getElementById('m-msg-list');
+  if(!list)return;
+  list.innerHTML='<div class="msg-empty">Loading…</div>';
+  unsubMMsgs=onSnapshot(query(collection(db,'messages'),where('senderUid','==',MENTOR_ID)),snap=>{
+    let msgs=[];snap.forEach(d=>msgs.push({id:d.id,...d.data()}));
+    if(stuUID) msgs=msgs.filter(m=>m.recipientUid===stuUID); // filter by selected student
+    msgs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    const stuName = stuUID && stuEmailMap[stuUID]?.name ? stuEmailMap[stuUID].name : 'any student';
+    list.innerHTML=msgs.length?msgs.map(m=>msgRow(m,true)).join(''):`<div class="msg-empty">No sent messages to ${stuName} yet.</div>`;
+  });
+}
+function showMCompose(){
+  if(unsubMMsgs){unsubMMsgs();unsubMMsgs=null;}
+  const toolbar=document.getElementById('m-msg-toolbar');
+  if(toolbar)toolbar.style.display='none';
+  const opts=Object.entries(stuEmailMap).map(([uid,s])=>`<option value="${uid}|||${s.name}">${s.name} (${s.email})</option>`).join('');
+  const _preSelected = stuUID && stuEmailMap[stuUID] ? stuUID+'|||'+stuEmailMap[stuUID].name : '';
+  document.getElementById('m-msg-list').innerHTML=`<div class="msg-compose-wrap">
+    <div class="msg-back" onclick="mMsgTab('inbox')">← Back</div>
+    <label class="msg-flabel">To</label>
+    <select class="msg-input" id="mc-to" style="background:#fff;"><option value="">— Select student —</option>${opts}</select>
+    <label class="msg-flabel">Subject</label>
+    <input class="msg-input" id="mc-subject" placeholder="Subject…"/>
+    <label class="msg-flabel">Message</label>
+    <textarea class="msg-input" id="mc-body" rows="6" placeholder="Write your message…" style="resize:vertical;"></textarea>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <button class="msg-send-btn" onclick="doSendMMsg()">Send Message</button>
+      <span id="mc-status" style="font-size:0.8rem;"></span>
+    </div>
+    <div style="margin-top:14px;padding:12px 14px;background:#f5f0e8;border-radius:9px;">
+      <div style="font-size:0.72rem;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Quick Templates</div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px;">
+        <button onclick="applyTpl('weekly')" class="msg-tpl">📅 Weekly check-in</button>
+        <button onclick="applyTpl('motivate')" class="msg-tpl">🔥 Motivation</button>
+        <button onclick="applyTpl('deadline')" class="msg-tpl">⏰ Deadline reminder</button>
+        <button onclick="applyTpl('sop')" class="msg-tpl">✍️ SOP feedback</button>
+        <button onclick="applyTpl('professor')" class="msg-tpl">👨‍🏫 Professor tip</button>
+      </div>
+    </div>
+  </div>`;
+  if(_preSelected){ const sel=document.getElementById('mc-to'); if(sel) sel.value=_preSelected; }
+}
+window.applyTpl=function(type){
+  const t=TEMPLATES[type];if(!t)return;
+  const s=document.getElementById('mc-subject');const b=document.getElementById('mc-body');
+  if(s)s.value=t.sub;if(b)b.value=t.body;
+};
+window.doSendMMsg=async function(){
+  const toVal=document.getElementById('mc-to')?.value;
+  const subject=document.getElementById('mc-subject')?.value?.trim();
+  const body=document.getElementById('mc-body')?.value?.trim();
+  const st=document.getElementById('mc-status');
+  if(!toVal){if(st){st.textContent='Please select a student.';st.style.color='#e74c3c';}return;}
+  if(!subject){if(st){st.textContent='Please enter a subject.';st.style.color='#e74c3c';}return;}
+  if(!body){if(st){st.textContent='Please write a message.';st.style.color='#e74c3c';}return;}
+  const [toUid,...rest]=toVal.split('|||');const toName=rest.join('|||');
+  if(st){st.textContent='Sending…';st.style.color='#888';}
+  await addDoc(collection(db,'messages'),{senderUid:MENTOR_ID,senderName:'Mentor',recipientUid:toUid,recipientName:toName,subject,body,createdAt:serverTimestamp(),read:false});
+  if(st){st.textContent='✓ Message sent!';st.style.color='#27ae60';}
+  setTimeout(()=>{document.getElementById('m-msg-toolbar').style.display='';mMsgTab('sent');},1500);
+};
+function initStudentMsgBadge(uid){
+  return onSnapshot(query(collection(db,'messages'),where('recipientUid','==',uid)),snap=>{
+    let u=0;snap.forEach(d=>{if(!d.data().read)u++;});
+    const b=document.getElementById('s-msg-badge');
+    if(b){b.textContent=u;b.style.display=u>0?'inline':'none';}
+  });
+}
+function initMentorMsgBadge(){
+  return onSnapshot(query(collection(db,'messages'),where('recipientUid','==',MENTOR_ID)),snap=>{
+    let u=0;snap.forEach(d=>{if(!d.data().read)u++;});
+    const b=document.getElementById('m-msg-badge');
+    if(b){b.textContent=u;b.style.display=u>0?'inline-block':'none';}
+  });
+}
+// ── PASSWORD VISIBILITY TOGGLE ───────────────────────
+window.togglePw = function(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.type === 'password') { input.type='text'; btn.textContent='🙈'; }
+  else { input.type='password'; btn.textContent='👁'; }
+};
+
+// ── APP BADGE (unread count on PWA icon) ─────────────
+function setAppBadge(count) {
+  if ('setAppBadge' in navigator) {
+    if(count>0) navigator.setAppBadge(count).catch(()=>{});
+    else navigator.clearAppBadge().catch(()=>{});
+  }
+}
+
 function g(id){return document.getElementById(id)?.value?.trim()||'';}
-function tx(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
-function bw(id,p){const e=document.getElementById(id);if(e)e.style.width=p+'%';}
+function tx(id,v){const e=document.getElementById(id);if(e) e.textContent=v;}
+function bw(id,p){const e=document.getElementById(id);if(e) e.style.width=p+'%';}
 function dis(id,d,t){const e=document.getElementById(id);if(e){e.disabled=d;e.textContent=t;}}
-function err(id,m,c='#e74c3c'){const e=document.getElementById(id);if(e){e.textContent=m;e.style.color=c;}}
-function aerr(c){if(c==='auth/user-not-found'||c==='auth/invalid-credential')return'Email or password is incorrect.';if(c==='auth/wrong-password')return'Password is incorrect.';if(c==='auth/invalid-email')return'Please enter a valid email address.';if(c==='auth/email-already-in-use')return'This email is already registered. Try signing in.';if(c==='auth/weak-password')return'Password must be at least 6 characters.';return'Something went wrong. Please try again.';}
-window.stab=(btn,tpid)=>{const par=btn.closest('.tabs').parentElement;btn.closest('.tabs').querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');par.querySelectorAll('.tp').forEach(p=>p.classList.remove('on'));document.getElementById(tpid)?.classList.add('on');};
-window.copyEmail=()=>{const t=document.getElementById('etpl').innerText.replace('Copy','').trim();navigator.clipboard.writeText(t).then(()=>{const b=document.querySelector('.cpb');b.textContent='Copied!';setTimeout(()=>b.textContent='Copy',2000);});};
-window.toggleSb=()=>{const sb=document.getElementById('screen-mentor').style.display!=='none'?document.getElementById('sb-m'):document.getElementById('sb-s');if(!sb)return;const o=sb.classList.contains('open');if(o){sb.classList.remove('open');document.getElementById('sb-ov').classList.remove('on');}else{sb.classList.add('open');document.getElementById('sb-ov').classList.add('on');}};
-window.closeSb=()=>{document.getElementById('sb-s')?.classList.remove('open');document.getElementById('sb-m')?.classList.remove('open');document.getElementById('sb-ov').classList.remove('on');};
-document.getElementById('sb-ov').addEventListener('click',closeSb);
-document.querySelectorAll('.main').forEach(el=>{el.addEventListener('click',()=>{if(window.innerWidth<=800){const s=document.querySelector('.sb.open');if(s)closeSb();}});});
-document.querySelectorAll('.ni').forEach(el=>{el.addEventListener('click',()=>{if(window.innerWidth<=800)closeSb();});});
-window.addEventListener('scroll',()=>{document.getElementById('scroll-top').classList.toggle('on',window.scrollY>300);const secs=document.querySelectorAll('.sec[id]');let cur='';secs.forEach(s=>{if(window.scrollY>=s.offsetTop-120)cur=s.id;});document.querySelectorAll('.ni').forEach(i=>i.classList.toggle('on',i.getAttribute('href')==='#'+cur));});
-document.getElementById('si-pw').addEventListener('keydown',e=>{if(e.key==='Enter')window.doSignIn();});
+function err(id,msg,col='#e74c3c'){const e=document.getElementById(id);if(e){e.textContent=msg;e.style.color=col;}}
+function aerr(c){
+  if(c==='auth/user-not-found'||c==='auth/invalid-credential') return 'Email or password is incorrect.';
+  if(c==='auth/wrong-password') return 'Password is incorrect.';
+  if(c==='auth/invalid-email')  return 'Please enter a valid email address.';
+  if(c==='auth/email-already-in-use') return 'This email is already registered. Try signing in.';
+  if(c==='auth/weak-password')  return 'Password must be at least 6 characters.';
+  return 'Something went wrong. Please try again.';
+}
+
+// ── TAB SWITCHING (modules) ──────────────────────────
+window.stab = (btn, tpid) => {
+  const parent = btn.closest('.tabs').parentElement;
+  btn.closest('.tabs').querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  parent.querySelectorAll('.tp').forEach(p=>p.classList.remove('on'));
+  const tp=document.getElementById(tpid); if(tp) tp.classList.add('on');
+};
+
+// ── COPY EMAIL ───────────────────────────────────────
+window.copyEmail = () => {
+  const text=document.getElementById('etpl').innerText.replace('Copy','').trim();
+  navigator.clipboard.writeText(text).then(()=>{
+    const b=document.querySelector('.cpb');
+    b.textContent='Copied!';setTimeout(()=>b.textContent='Copy',2000);
+  });
+};
+
+// ── SIDEBAR (mobile) ────────────────────────────────
+window.toggleSb = ()=>{
+  const sb = document.getElementById('screen-mentor').style.display !== 'none'
+    ? document.getElementById('sb-m')
+    : document.getElementById('sb-s');
+  if(!sb) return;
+  const isOpen = sb.classList.contains('open');
+  if(isOpen) {
+    sb.classList.remove('open');
+    document.getElementById('sb-ov').classList.remove('on');
+  } else {
+    sb.classList.add('open');
+    document.getElementById('sb-ov').classList.add('on');
+  }
+};
+window.closeSb = ()=>{
+  document.getElementById('sb-s')?.classList.remove('open');
+  document.getElementById('sb-m')?.classList.remove('open');
+  document.getElementById('sb-ov').classList.remove('on');
+};
+// Clicking the overlay closes the sidebar
+document.getElementById('sb-ov').addEventListener('click', closeSb);
+// Clicking anywhere in main content area on mobile closes sidebar
+document.querySelectorAll('.main').forEach(el=>{
+  el.addEventListener('click', e=>{
+    if(window.innerWidth <= 800) {
+      const sbEl = document.querySelector('.sb.open');
+      if(sbEl) closeSb();
+    }
+  });
+});
+
+// Close sidebar on nav click (mobile)
+document.querySelectorAll('.ni').forEach(el=>{
+  el.addEventListener('click',()=>{if(window.innerWidth<=800) closeSb();});
+});
+
+// ── SCROLL + NAV HIGHLIGHT ───────────────────────────
+window.addEventListener('scroll',()=>{
+  document.getElementById('scroll-top').classList.toggle('on',window.scrollY>300);
+  const secs=document.querySelectorAll('.sec[id]');
+  let cur='';
+  secs.forEach(s=>{if(window.scrollY>=s.offsetTop-120) cur=s.id;});
+  document.querySelectorAll('.ni').forEach(i=>i.classList.toggle('on',i.getAttribute('href')==='#'+cur));
+});
+
+// ── ENTER KEY ────────────────────────────────────────
+document.getElementById('si-pw').addEventListener('keydown',e=>{if(e.key==='Enter') window.doSignIn();});
 </script>
 </body>
 </html>
