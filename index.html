@@ -252,7 +252,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
 #sb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.52);z-index:350;}
 
 /* ─── MAIN AREA ────────────────────────────────────── */
-.main{margin-left:var(--sw);min-height:100vh;}
+.main{margin-left:var(--sw);min-height:100vh;width:calc(100% - var(--sw));box-sizing:border-box;}
 .hero{background:var(--navy2);background-image:radial-gradient(ellipse at 70% 50%,rgba(232,160,32,0.11) 0%,transparent 60%);color:#fff;padding:56px 52px 44px;position:relative;overflow:hidden;}
 .hero::before{content:'';position:absolute;top:-44px;right:-44px;width:240px;height:240px;border-radius:50%;border:34px solid rgba(232,160,32,0.05);pointer-events:none;}
 .ey{font-size:0.7rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;font-family:'DM Mono',monospace;}
@@ -262,7 +262,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
 .hst{display:flex;gap:26px;margin-top:24px;flex-wrap:wrap;}
 .hst .n{font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700;color:var(--gold);}
 .hst .l{font-size:0.7rem;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.06em;}
-.ac{padding:28px 52px 76px;max-width:900px;}
+.ac{padding:28px 52px 76px;max-width:100%;}
 
 /* ─── SECTIONS ─────────────────────────────────────── */
 .sec{margin-bottom:52px;}
@@ -351,7 +351,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
 .mc2{background:#f5f0e8;border-radius:7px;padding:8px 5px;text-align:center;}
 .mc2 .ml{font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;}
 .mc2 .ms{font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:700;color:var(--navy);}
-.mcnt{padding:24px 52px 76px;max-width:900px;}
+.mcnt{padding:24px 52px 76px;max-width:100%;}
 .mmh{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--navy);padding:11px 0 6px;border-bottom:2px solid var(--border);margin-bottom:11px;margin-top:20px;}
 .mr{display:flex;align-items:flex-start;gap:10px;background:#fff;border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:6px;transition:all .2s;}
 .mr.done{background:#f4fdf7;border-color:#a8d8b9;}
@@ -406,7 +406,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
   /* Overlay darkens content when sidebar is open */
   #sb-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.52);z-index:350;cursor:pointer;}
   #sb-ov.on{display:block;}
-  .main{margin-left:0 !important;}
+  .main{margin-left:0 !important;width:100%;}
   .hero{padding:66px 16px 26px;}
   .hero h1{font-size:1.65rem;}
   .ac{padding:16px 14px 72px;}
@@ -862,7 +862,7 @@ Sincerely,
       <div class="msc"><div class="n" id="m-done">0</div><div class="l">Tasks Completed</div></div>
       <div class="msc"><div class="n" id="m-left">31</div><div class="l">Tasks Remaining</div></div>
     </div>
-    <div class="mgrid-wrap" style="padding:16px 52px 0;">
+    <div class="mgrid-wrap" style="padding:16px 52px 4px;">
       <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px;font-family:'DM Mono',monospace;">Progress by Month</div>
       <div class="mgrid">
         <div class="mc2"><div class="ml">Month 1</div><div class="ms" id="ms1">0/8</div></div>
