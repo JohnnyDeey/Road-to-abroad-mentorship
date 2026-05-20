@@ -2005,6 +2005,11 @@ window.addEventListener('scroll',()=>{
 
 // ── ENTER KEY ────────────────────────────────────────
 document.getElementById('si-pw').addEventListener('keydown',e=>{if(e.key==='Enter') window.doSignIn();});
+history.replaceState({ page: 'home' }, '');
+history.pushState({ page: 'home' }, '');
+window.addEventListener('popstate', () => {
+  history.pushState({ page: 'home' }, '');
+});
 </script>
 </body>
 </html>
