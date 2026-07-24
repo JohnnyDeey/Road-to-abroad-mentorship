@@ -167,9 +167,14 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
   justify-content:center;
   background:var(--navy);
 }
+body.login-active #mob-btn,
+body.login-active #scroll-down,
+body.login-active #scroll-up{
+  display:none !important;
+}
 .lbox{
   background:#fff;border-radius:18px;
-  padding:40px 36px;width:100%;max-width:400px;
+  padding:40px 36px;width:100%;max-width:280px;
   box-shadow:0 20px 60px rgba(0,0,0,0.35);
 }
 .llogo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px;}
@@ -396,6 +401,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
 #scroll-down{position:fixed;top:70px;right:22px;background:var(--navy);color:var(--gold);border:none;border-radius:50%;width:40px;height:40px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:200;}
 #scroll-top.on{display:flex;}
 #scroll-down.on{display:flex;}
+body.login-active #scroll-down.on{display:none !important;}
 
 /* ─── MOBILE ─────────────────────────────────────────── */
 @media(max-width:800px){
@@ -493,7 +499,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
 
 </style>
 </head>
-<body>
+<body class="login-active">
 
 <!-- NOTIFICATION PERMISSION BANNER -->
 <div id="notif-banner">
@@ -594,7 +600,7 @@ body{font-family:'DM Sans',sans-serif;background:#f5f0e8;color:#1a1a2e;min-heigh
 
 <!-- ════════════ MOBILE BAR ════════════ -->
 <div id="mob-bar">
-  <button id="mob-btn" onclick="toggleSb()">☰</button>
+  
   <div class="mob-ml">Path <span>Abroad</span> ✈</div>
 </div>
 <div id="sb-ov" onclick="closeSb()"></div>
@@ -893,7 +899,7 @@ Sincerely,
 </div>
 
 <button id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
-<button id="scroll-down" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})">↓</button>
+
 
 <!-- ════════════ FIREBASE + APP LOGIC ════════════ -->
 <script type="module">
@@ -1019,11 +1025,12 @@ function show(id) {
   // Login and pending need flex to centre content
   if (id === 'screen-login' || id === 'screen-pending') {
     target.style.display = 'flex';
+    document.body.classList.add('login-active');
   } else {
     target.style.display = 'block';
+    document.body.classList.remove('login-active');
   }
 }
-
 // ── AUTH ─────────────────────────────────────────────
 onAuthStateChanged(auth, async user => {
   if (isSigningUp) return; // doSignUp handles routing during sign up
