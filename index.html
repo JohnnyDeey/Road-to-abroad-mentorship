@@ -397,8 +397,8 @@ body.login-active #scroll-up{
 .msg-tpl:hover{background:var(--navy);color:#fff;border-color:var(--navy);}
 
 /* ─── SCROLL TOP ─────────────────────────────────────── */
-#scroll-top{position:fixed;bottom:22px;right:22px;background:var(--navy);color:var(--gold);border:none;border-radius:50%;width:40px;height:40px;font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:200;}
-#scroll-down{position:fixed;top:70px;right:22px;background:var(--navy);color:var(--gold);border:none;border-radius:50%;width:40px;height:40px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:200;}
+#scroll-top{position:fixed;top:50%;right:22px;transform:translateY(-30px);background:var(--navy);color:var(--gold);border:none;border-radius:50%;width:40px;height:40px;font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:200;}
+#scroll-down{position:fixed;top:50%;right:22px;transform:translateY(10px);background:var(--navy);color:var(--gold);border:none;border-radius:50%;width:40px;height:40px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,0.2);z-index:200;}
 #scroll-top.on{display:flex;}
 #scroll-down.on{display:flex;}
 body.login-active #scroll-down.on{display:none !important;}
@@ -600,7 +600,7 @@ body.login-active #scroll-down.on{display:none !important;}
 
 <!-- ════════════ MOBILE BAR ════════════ -->
 <div id="mob-bar">
-  
+  <button id="mob-btn" onclick="toggleSb()">☰</button>
   <div class="mob-ml">Path <span>Abroad</span> ✈</div>
 </div>
 <div id="sb-ov" onclick="closeSb()"></div>
@@ -899,8 +899,7 @@ Sincerely,
 </div>
 
 <button id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
-
-
+<button id="scroll-down" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})">↓</button>
 <!-- ════════════ FIREBASE + APP LOGIC ════════════ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
