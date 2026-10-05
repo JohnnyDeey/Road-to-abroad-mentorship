@@ -285,6 +285,21 @@ body.noscroll .demo{display:none}
 </head>
 <body>
 <div id="app"></div>
+<script>
+// DEBUG TRACER, off by default.  On:  localStorage.setItem('pa_trace','1')   Off: localStorage.removeItem('pa_trace')
+// Read after a restart:  console.table(JSON.parse(localStorage.getItem('pa_trace_log')))
+(function(){
+  try{ if(localStorage.getItem('pa_trace')!=='1') return; }catch(e){ return; }
+  var log=[];
+  function add(ev,d){ log.push({ms:performance.now().toFixed(3),ev:ev,detail:d||''}); try{localStorage.setItem('pa_trace_log',JSON.stringify(log));}catch(e){} }
+  window.paTrace=add;
+  add('page start', location.href);
+  var app=document.getElementById('app'), last='';
+  new MutationObserver(function(){ var s=(app.innerText||'').trim().split('\n').slice(0,2).join(' | '); if(s!==last){ last=s; add('screen', s.slice(0,80)); } }).observe(app,{childList:true,subtree:true});
+  document.addEventListener('visibilitychange',function(){ add('visibility', document.visibilityState); });
+  window.addEventListener('error',function(e){ add('error', e.message); });
+})();
+</script>
 <div id="toast"></div>
 
 <script type="module">
@@ -1318,15 +1333,19 @@ async function bioVerify(reason){
   catch(e){return false;}
   finally{bioBusy=false;bioEndedAt=Date.now();}
 }
-async function bioUnlock(){if(await bioVerify('Unlock Path Abroad')){V.locked=false;render();}}
-V.locked=!!Bio&&bioOn();V.bioAsked=false;
+async function bioUnlock(){if(await bioVerify('Unlock Path Abroad')){V.locked=false;markActive();render();}}
+const LOCK_AFTER=15*60*1000;
+function markActive(){try{localStorage.setItem('pa_last_active',String(Date.now()));}catch(e){}}
+function lastActive(){try{return +localStorage.getItem('pa_last_active')||0;}catch(e){return 0;}}
+V.locked=!!Bio&&bioOn()&&Date.now()-lastActive()>LOCK_AFTER;V.bioAsked=false;
+if(window.paTrace)window.paTrace('lock decision','locked='+V.locked+' | lockOn='+bioOn()+' | minutesSinceLastUse='+(lastActive()?((Date.now()-lastActive())/60000).toFixed(2):'never'));
 if(Bio&&CapApp){
   CapApp.addListener('appStateChange',({isActive})=>{
     // The fingerprint dialog itself pauses and resumes the app, so ignore those.
     if(bioBusy||Date.now()-bioEndedAt<3000){hiddenAt=0;return;}
-    if(!isActive){hiddenAt=Date.now();return;}
+    if(!isActive){hiddenAt=Date.now();markActive();return;}
     const away=hiddenAt?Date.now()-hiddenAt:0;hiddenAt=0;
-    if(bioOn()&&V.screen==='app'&&!V.locked&&away>15*60*1000){V.locked=true;V.bioAsked=false;V.sheet=null;render();}
+    if(bioOn()&&V.screen==='app'&&!V.locked&&away>LOCK_AFTER){V.locked=true;V.bioAsked=false;V.sheet=null;render();}
   });
 }
 function bioCard(){
@@ -1388,6 +1407,7 @@ function updateBanner(){
 }
 
 // ── START ──────────────────────────────────────────────────────────────
+if(window.paTrace)window.PA={V,Store,C,render,ACT};
 if(DEMO){
   loadSample();mountDemo();render();
 }else if(!FIREBASE_CONFIG.apiKey){
