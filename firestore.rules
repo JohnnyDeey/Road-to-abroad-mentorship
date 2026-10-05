@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isMentor() { return signedIn() && request.auth.uid == 'MoGuJE62sYcR3kJak38Jx2TZkrb2'; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function myDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function isApproved() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && myDoc().data.status == 'approved';
+    }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function signupShape() {
+      return request.resource.data.keys().hasOnly(['email','name','field','role','status','createdAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.role == 'student';
+    }
+
+    // ── Users ────────────────────────────────────────────────
+    // Students create their own pending doc and may only edit their profile.
+    // Status, track, start date and unlocked module are mentor-only.
+    match /users/{userId} {
+      allow read: if isMentor() || isOwner(userId);
+      allow create: if isMentor() || (isOwner(userId) && signupShape());
+      allow update: if isMentor() || (isOwner(userId) && (
+        changed().hasOnly(['profile','fcmTokens'])
+        || (resource.data.status == 'deleted' && signupShape())
+      ));
+      allow delete: if isMentor();
+    }
+
+    // ── Task progress ────────────────────────────────────────
+    // Task ids look like m3t2 (module 3, task 2). A student can only write
+    // tasks in modules that are open to them, can never approve, and cannot
+    // change a task once it is approved.
+    function moduleOf(taskId) { return int(taskId.split('t')[0].replace('m', '')); }
+    function studentTaskWrite(taskId) {
+      return isApproved()
+        && taskId.matches('m[0-9]+t[0-9]+')
+        && moduleOf(taskId) <= myDoc().data.get('unlockedModule', 1)
+        && (request.resource.data.status in ['in_progress', 'submitted']
+            || (request.resource.data.status == 'revision'
+                && resource != null && resource.data.status == 'revision'));
+    }
+    match /progress/{userId}/tasks/{taskId} {
+      allow read: if isMentor() || isOwner(userId);
+      allow create: if isMentor() || (isOwner(userId) && studentTaskWrite(taskId)
+        && request.resource.data.keys().hasOnly(['answer','status','updatedAt','submittedAt']));
+      allow update: if isMentor() || (isOwner(userId) && studentTaskWrite(taskId)
+        && resource.data.get('status', '') != 'approved'
+        && changed().hasOnly(['answer','status','updatedAt','submittedAt']));
+      allow delete: if isMentor();
+    }
+
+    // ── Messages ─────────────────────────────────────────────
+    // uid = the student whose thread this is. Students only send as
+    // themselves into their own thread, and can only mark replies as read.
+    match /messages/{messageId} {
+      allow read: if isMentor() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isMentor() || (isApproved()
+        && request.resource.data.keys().hasOnly(['uid','from','body','at','read'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.read == false);
+      allow update: if isMentor() || (signedIn()
+        && resource.data.uid == request.auth.uid
+        && resource.data.from != request.auth.uid
+        && changed().hasOnly(['read']));
+      allow delete: if isMentor();
+    }
+
+    // ── Meeting log: mentor only ─────────────────────────────
+    match /meetings/{userId}/log/{entryId} {
+      allow read, write: if isMentor();
+    }
+
+    // ── Curricula (for editing content without redeploying) ──
+    match /curricula/{track} {
+      allow read: if signedIn();
+      allow write: if isMentor();
+    }
+  }
+}
