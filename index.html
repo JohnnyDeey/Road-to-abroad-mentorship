@@ -339,7 +339,8 @@ const IC={
   copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
   target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
   globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
-  pen:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>'
+  pen:'<path d="M4 20l4-1 11-11-3-3L5 16z"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'
 };
 const icon=(n,c='')=>`<svg class="ico ${c}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]||''}</svg>`;
 
@@ -754,8 +755,8 @@ const V={screen:DEMO?'app':'loading',role:'mentor',uid:'MENTOR',tab:'home',mod:n
 function topBar(){return `<header class="top"><img class="brand-i" src="/icon-192.png" alt=""><div class="brand">Path <b>Abroad</b></div><div class="sp"></div>${V.role==='mentor'?'<span class="role-tag">Mentor</span>':''}<button class="top-btn" data-a="signout" title="Sign out" aria-label="Sign out">${icon('logout')}</button></header>`;}
 function navBar(){
   const tabs=V.role==='mentor'
-    ?[['home','users','Students',Store.pending().length],['review','inbox','Review',reviewQueue().length],['messages','chat','Messages',unreadMentor()]]
-    :[['home','home','Home',0],['modules','layers','Modules',0],['messages','chat','Messages',unreadFor(V.uid)],['profile','user','Profile',0]];
+    ?[['home','users','Students',Store.pending().length],['review','inbox','Review',reviewQueue().length],['messages','chat','Messages',unreadMentor()],['settings','gear','Settings',0]]
+    :[['home','home','Home',0],['modules','layers','Modules',0],['messages','chat','Messages',unreadFor(V.uid)],['profile','user','Profile',0],['settings','gear','Settings',0]];
   const on=V.role==='mentor'&&V.stu?'home':V.tab;
   return `<nav class="nav">${tabs.map(([id,ic,l,n])=>`<button class="${on===id?'on':''}" data-a="go" data-tab="${id}">${icon(ic,'lg')}<span>${l}</span>${n?`<span class="dot">${n}</span>`:''}</button>`).join('')}</nav>`;
 }
@@ -910,6 +911,23 @@ function mSettings(u){
   <div class="card danger"><b>Remove student</b><p class="hint">They lose access. Their work is kept and comes back if you approve them again.</p><div class="row-btns" style="margin-top:8px"><button class="btn red" data-a="removeStu" data-uid="${u.uid}">Remove ${esc(first(u.name))}</button></div></div>`;
 }
 
+// ── SETTINGS TAB (mentor and students) ─────────────────────────────────
+function settingsView(){
+  const mentor=V.role==='mentor',u=mentor?null:Store.user(V.uid);
+  const name=mentor?'Mentor':(u?.name||'');
+  const email=(!DEMO&&auth?.currentUser?.email)||u?.email||(mentor?EMAILJS.mentorEmail:'');
+  const native=!!window.Capacitor;
+  return `<h2 class="pg-t">Settings</h2>
+  <div class="sec-t">Account</div>
+  <div class="card me"><div class="av lg">${esc(initial(name))}</div><div class="grow"><div class="nm">${esc(name)}</div><div class="sub">${esc(email)}</div><div class="flags"><span class="chip trk">${mentor?'Mentor':esc(cur(u).short)+' track'}</span></div></div></div>
+  <div class="card mt"><b>Password</b><p class="hint">We email you a link to set a new password.</p><div class="row-btns" style="margin-top:8px"><button class="btn ghost" data-a="pwReset">Send reset email</button></div></div>
+  <div class="sec-t">Security</div>
+  ${Bio?bioCard():`<div class="card"><b>Fingerprint lock</b><p class="hint">${native?'Install the latest version of the app to use this.':'Available in the Android app.'}</p>${SHOW_APK?'<div class="row-btns" style="margin-top:8px"><a class="btn" href="/PathAbroad.apk">Install the Android app</a></div>':''}</div>`}
+  <div class="sec-t">App</div>
+  <div class="card"><b>Updates</b><p class="hint">New versions arrive by themselves. If something looks out of date, reload the latest version.</p><div class="row-btns" style="margin-top:8px"><button class="btn ghost" data-a="refreshApp">Reload latest version</button></div><p class="meta">${native?'Android app':'Web app'}</p></div>
+  <div class="row-btns"><button class="btn red" data-a="signout">${icon('logout','sm')} Sign out</button></div>`;
+}
+
 // ── SHEETS ─────────────────────────────────────────────────────────────
 function taskSheet(){
   const {uid,m,k}=V.sheet,u=Store.user(uid);if(!u)return '';
@@ -965,10 +983,10 @@ function authScreen(){
 
 // ── RENDER ─────────────────────────────────────────────────────────────
 function body(){
-  if(V.role==='mentor'){if(V.stu)return mStudent();return({home:mHome,review:mReview,messages:mMessages}[V.tab]||mHome)();}
+  if(V.role==='mentor'){if(V.stu)return mStudent();return({home:mHome,review:mReview,messages:mMessages,settings:settingsView}[V.tab]||mHome)();}
   const u=Store.user(V.uid);
   if(V.tab==='modules'&&V.mod)return sModule(u,V.mod);
-  return({home:sHome,modules:sModules,messages:sMessages,profile:sProfile}[V.tab]||sHome)(u);
+  return({home:sHome,modules:sModules,messages:sMessages,profile:sProfile,settings:settingsView}[V.tab]||sHome)(u);
 }
 function render(){
   const app=$('#app');
@@ -1036,6 +1054,20 @@ const ACT={
   reset(){if(DEMO){toast('Reset email sent');return 'skip';}return liveReset();},
   signout(){if(DEMO){V.screen='login';V.sheet=null;V.draft={};return;}fb.signOut(auth);return 'skip';},
   migrate(){migrate();return 'skip';},
+  pwReset(){
+    const em=(!DEMO&&auth?.currentUser?.email)||'';
+    if(DEMO||!em){toast('Reset email sent');return 'skip';}
+    fb.sendPasswordResetEmail(auth,em).then(()=>toast('Reset link sent to '+em),fail);
+    return 'skip';
+  },
+  refreshApp(){
+    (async()=>{
+      try{if(window.caches){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));}}catch(e){}
+      try{const rs=navigator.serviceWorker?await navigator.serviceWorker.getRegistrations():[];await Promise.all(rs.map(r=>r.update().catch(()=>{})));}catch(e){}
+      location.reload();
+    })();
+    return 'skip';
+  },
   unlock(){bioUnlock();return 'skip';},
   bioPassword(){V.locked=false;if(!DEMO)fb.signOut(auth);return 'skip';},
   bioToggle(){
