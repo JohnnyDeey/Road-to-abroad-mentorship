@@ -249,6 +249,12 @@ details.card>summary::-webkit-details-marker{display:none}
 .bub.me a{color:var(--gold)}
 .bub.them{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:5px}
 .bub time{display:block;font-size:.64rem;opacity:.55;margin-top:3px;text-align:right}
+.bub .tl{display:block;font-size:.66rem;font-weight:700;opacity:.7;margin-bottom:2px}
+.tc-list{display:flex;flex-direction:column;gap:8px}
+.tc{background:var(--gold-soft);border-left:3px solid var(--gold);border-radius:0 10px 10px 0;padding:8px 12px;font-size:.88rem;white-space:pre-wrap;word-wrap:break-word}
+.tc.me{background:var(--grey-soft);border-left-color:var(--navy)}
+.tc-h{display:flex;justify-content:space-between;gap:8px;font-size:.72rem;color:var(--muted);margin-bottom:3px;white-space:normal}
+.tc-h b{color:var(--navy)}
 .composer{position:sticky;bottom:calc(var(--nav-h) + var(--sab));display:flex;gap:8px;align-items:flex-end;background:var(--bg);padding:10px 0 4px;margin-top:10px}
 .composer textarea{resize:none;max-height:140px;border-radius:20px;padding:10px 14px}
 .send{width:44px;height:44px;border-radius:50%;background:var(--gold);color:var(--navy);display:grid;place-items:center;flex-shrink:0}
@@ -711,8 +717,8 @@ const MockWrites={
   remove(uid){C.users[uid].status='deleted';emit();},
   updateStudent(uid,patch){Object.assign(C.users[uid],patch);emit();},
   saveProfile(uid,p){const u=C.users[uid];u.profile={...(u.profile||{}),...p};emit();},
-  send(uid,from,body){C.messages.push({id:'m'+Math.random().toString(36).slice(2),uid,from,body,at:Date.now(),read:false});emit();},
-  markRead(uid,me){C.messages.forEach(m=>{if(m.uid===uid&&m.from!==me)m.read=true;});},
+  send(uid,from,body,task){const x={id:'m'+Math.random().toString(36).slice(2),uid,from,body,at:Date.now(),read:false};if(task)x.task=task;C.messages.push(x);emit();},
+  markRead(uid,me,task){C.messages.forEach(m=>{if(m.uid===uid&&m.from!==me&&(!task||m.task===task))m.read=true;});},
   addLog(uid,x){Store.log(uid).push({id:'l'+Date.now(),...x});emit();},
   delLog(uid,id){C.log[uid]=Store.log(uid).filter(x=>x.id!==id);emit();}
 };
@@ -741,8 +747,8 @@ const FireWrites={
   remove(uid){fb.updateDoc(fb.doc(db,'users',uid),{status:'deleted'}).catch(fail);},
   updateStudent(uid,patch){fb.updateDoc(fb.doc(db,'users',uid),patch).catch(fail);},
   saveProfile(uid,p){const u=C.users[uid];u.profile={...(u.profile||{}),...p};emit();fb.setDoc(fb.doc(db,'users',uid),{profile:u.profile},{merge:true}).catch(fail);},
-  send(uid,from,body){fb.addDoc(fb.collection(db,'messages'),{uid,from,body,at:fb.serverTimestamp(),read:false}).catch(fail);},
-  markRead(uid,me){C.messages.forEach(m=>{if(m.uid===uid&&m.from!==me&&!m.read&&!marking.has(m.id)){marking.add(m.id);m.read=true;fb.updateDoc(fb.doc(db,'messages',m.id),{read:true}).catch(()=>marking.delete(m.id));}});},
+  send(uid,from,body,task){const v={uid,from,body,at:fb.serverTimestamp(),read:false};if(task)v.task=task;fb.addDoc(fb.collection(db,'messages'),v).catch(fail);},
+  markRead(uid,me,task){C.messages.forEach(m=>{if(m.uid===uid&&m.from!==me&&(!task||m.task===task)&&!m.read&&!marking.has(m.id)){marking.add(m.id);m.read=true;fb.updateDoc(fb.doc(db,'messages',m.id),{read:true}).catch(()=>marking.delete(m.id));}});},
   addLog(uid,x){fb.addDoc(fb.collection(db,'meetings',uid,'log'),x).catch(fail);},
   delLog(uid,id){fb.deleteDoc(fb.doc(db,'meetings',uid,'log',id)).catch(fail);}
 };
@@ -763,9 +769,10 @@ function navBar(){
 function taskRow(u,m,k,t){
   const e=Store.tasks(u.uid)[tid(m,k)]||{},s=e.status||'not_started';
   const fb=e.mentorComment&&s==='revision';
+  const nc=Store.thread(u.uid).filter(x=>x.task===tid(m,k)&&!x.read&&x.from!==(V.role==='mentor'?'MENTOR':V.uid)).length;
   return `<button class="task" data-a="openTask" data-uid="${u.uid}" data-m="${m}" data-k="${k}">
     <span class="tnum st-${s}">${s==='approved'?icon('check','sm'):`${m}.${k}`}</span>
-    <span class="tt">${esc(t.t)}${fb?`<span class="tfb">${icon('chat','sm')} Feedback from your mentor</span>`:''}</span>${chip(s)}</button>`;
+    <span class="tt">${esc(t.t)}${fb?`<span class="tfb">${icon('chat','sm')} Feedback from your mentor</span>`:''}${nc?`<span class="tfb" style="color:var(--blue)">${icon('chat','sm')} ${nc} new comment${nc>1?'s':''}</span>`:''}</span>${chip(s)}</button>`;
 }
 function guideBlock(u,n){
   const m=cur(u).modules[n-1],key=`g:${u.uid}:${n}`,open=!V.toggled.has(key);
@@ -778,7 +785,7 @@ function guideBlock(u,n){
 }
 function threadView(uid,me){
   const th=Store.thread(uid);Store.markRead(uid,me);
-  return `<div class="thread">${th.length?th.map(m=>`<div class="bub ${m.from===me?'me':'them'}">${linkify(m.body)}<time>${ago(m.at)}</time></div>`).join(''):'<div class="empty">No messages yet. Say hello.</div>'}</div>
+  return `<div class="thread">${th.length?th.map(m=>`<div class="bub ${m.from===me?'me':'them'}">${m.task?`<span class="tl">${m.task.replace(/^m(\d+)t(\d+)$/,'Module $1 · Task $2')}</span>`:''}${linkify(m.body)}<time>${ago(m.at)}</time></div>`).join(''):'<div class="empty">No messages yet. Say hello.</div>'}</div>
   <div class="composer"><textarea class="in" rows="1" data-draft="msg" placeholder="Write a message" aria-label="Message">${esc(V.draft.msg||'')}</textarea><button class="send" data-a="send" data-uid="${uid}" aria-label="Send">${icon('send')}</button></div>`;
 }
 
@@ -929,23 +936,34 @@ function settingsView(){
 }
 
 // ── SHEETS ─────────────────────────────────────────────────────────────
+function taskComments(uid,id,e){
+  const me=V.role==='mentor'?'MENTOR':V.uid,u=Store.user(uid);
+  let list=Store.thread(uid).filter(x=>x.task===id);
+  if(!list.length&&e.mentorComment)list=[{from:'MENTOR',body:e.mentorComment,at:e.reviewedAt}];
+  Store.markRead(uid,me,id);
+  const when=t=>t?fmt(new Date(t),true)+', '+new Date(t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'';
+  return `<label class="fl">Comments</label>${list.length?`<div class="tc-list">${list.map(x=>`<div class="tc ${x.from===me?'me':''}"><div class="tc-h"><b>${x.from==='MENTOR'?'Mentor':esc(first(u?.name))}</b><time>${when(x.at)}</time></div>${linkify(x.body)}</div>`).join('')}</div>`:'<p class="hint">No comments yet.</p>'}`;
+}
 function taskSheet(){
   const {uid,m,k}=V.sheet,u=Store.user(uid);if(!u)return '';
   const t=cur(u).modules[m-1].tasks[k-1],id=tid(m,k),e=Store.tasks(uid)[id]||{},s=e.status||'not_started',mentor=V.role==='mentor';
   let h=`<div class="sh-head"><span class="ey">Module ${m} · Task ${k}</span>${chip(s)}</div><h3>${esc(t.t)}</h3>${t.h?`<p class="hint">${esc(t.h)}</p>`:''}`;
   if(mentor){
     h+=`<label class="fl">${esc(first(u.name))}'s answer</label><div class="answer">${e.answer?linkify(e.answer):'<span class="muted">No answer yet</span>'}</div>${e.submittedAt?`<div class="meta">Submitted ${fmt(new Date(e.submittedAt),true)}</div>`:''}
-    <label class="fl" for="fb">Your feedback</label><textarea id="fb" class="in" rows="3" data-draft="comment" placeholder="What should they fix, or what did they do well?">${esc(V.draft.comment??e.mentorComment??'')}</textarea>
+    ${taskComments(uid,id,e)}
+    <textarea id="fb" class="in mt" rows="3" data-draft="comment" placeholder="Write a comment for ${esc(first(u.name))}">${esc(V.draft.comment||'')}</textarea>
     <div class="row-btns"><button class="btn green" data-a="review" data-s="approved">${icon('check','sm')} Approve</button><button class="btn red" data-a="review" data-s="revision">${icon('undo','sm')} Needs revision</button><button class="btn ghost" data-a="review" data-s="comment">${icon('send','sm')} Send comment</button></div>`;
     return h;
   }
-  if(e.mentorComment)h+=`<div class="fb"><div class="fb-h">${icon('chat','sm')} Mentor feedback</div>${linkify(e.mentorComment)}</div>`;
   const ro=s==='approved'||s==='submitted',ans=V.draft.answer??e.answer??'',lk=urls(e.answer);
   h+=`<label class="fl" for="ans">Your answer or link</label><textarea id="ans" class="in" rows="5" data-draft="answer" ${ro?'readonly':''} placeholder="Type your answer, or paste a Google Docs link">${esc(ans)}</textarea>`;
   if(ro&&lk.length)h+=`<div class="links-out">${lk.map(x=>`<a href="${esc(x)}" target="_blank" rel="noopener">${icon('link','sm')} Open link</a>`).join('')}</div>`;
-  if(s==='approved')h+=`<div class="note ok">${icon('check','sm')}<span>Approved${e.reviewedAt?' on '+fmt(new Date(e.reviewedAt),true):''}. Nothing more to do here.</span></div>`;
+  if(s==='approved')h+=`<div class="note ok">${icon('check','sm')}<span>Approved${e.reviewedAt?' on '+fmt(new Date(e.reviewedAt),true):''}.</span></div>`;
   else if(s==='submitted')h+=`<div class="note info">${icon('clock','sm')}<span>Waiting for your mentor's review.</span></div><div class="row-btns"><button class="btn ghost" data-a="withdraw">${icon('pen','sm')} Edit answer</button></div>`;
   else h+=`<div class="row-btns"><button class="btn ghost" data-a="saveTask">Save draft</button><button class="btn gold" data-a="submitTask">${icon('send','sm')} Submit for review</button></div>`;
+  h+=`${taskComments(uid,id,e)}
+  <textarea class="in mt" rows="2" data-draft="tcomment" placeholder="Reply to your mentor">${esc(V.draft.tcomment||'')}</textarea>
+  <div class="row-btns"><button class="btn ghost" data-a="tSend">${icon('send','sm')} Send</button></div>`;
   return h;
 }
 function approveSheet(){
