@@ -1425,6 +1425,7 @@ if(DEMO){
   auth=fb.getAuth(app);db=fb.getFirestore(app);
   if(window.emailjs&&EMAILJS.publicKey)window.emailjs.init({publicKey:EMAILJS.publicKey});
   fb.onAuthStateChanged(auth,user=>{
+    if(window.paTrace)window.paTrace('auth state', user?('signed in: '+user.email):'NO USER');
     stopAll();
     if(!user){V.role='student';V.uid=null;if(V.screen!=='signup')V.screen='login';V.sheet=null;render();return;}
     V.authErr='';
