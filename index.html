@@ -931,7 +931,7 @@ function settingsView(){
   <div class="sec-t">Security</div>
   ${Bio?bioCard():`<div class="card"><b>Fingerprint lock</b><p class="hint">${native?'Install the latest version of the app to use this.':'Available in the Android app.'}</p>${SHOW_APK?'<div class="row-btns" style="margin-top:8px"><a class="btn" href="/PathAbroad.apk">Install the Android app</a></div>':''}</div>`}
   <div class="sec-t">App</div>
-  <div class="card"><b>Updates</b><p class="hint">New versions arrive by themselves. If something looks out of date, reload the latest version.</p><div class="row-btns" style="margin-top:8px"><button class="btn ghost" data-a="refreshApp">Reload latest version</button></div><p class="meta">${native?'Android app':'Web app'}</p></div>
+  <div class="card"><b>Updates</b><p class="hint">New versions arrive by themselves. If something looks out of date, reload the latest version.</p><div class="row-btns" style="margin-top:8px"><button class="btn ghost" data-a="refreshApp">${native?'Check for updates':'Reload latest version'}</button></div><p class="meta">${native?'Android app':'Web app'}</p></div>
   <div class="row-btns"><button class="btn red" data-a="signout">${icon('logout','sm')} Sign out</button></div>`;
 }
 
@@ -1084,6 +1084,15 @@ const ACT={
   },
   refreshApp(){
     (async()=>{
+      if(CapApp&&CapApp.getInfo){
+        try{
+          const info=await CapApp.getInfo();
+          const latest=(await (await fetch('/version.json',{cache:'no-store'})).json()).android;
+          if(latest&&newer(latest,info.version)){V.update={from:info.version,to:latest};render();top0();toast(`Version ${latest} is available. Tap Update at the top.`);}
+          else toast(`You have the latest version (${info.version})`);
+        }catch(e){toast('Could not check for updates');}
+        return;
+      }
       try{if(window.caches){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));}}catch(e){}
       try{const rs=navigator.serviceWorker?await navigator.serviceWorker.getRegistrations():[];await Promise.all(rs.map(r=>r.update().catch(()=>{})));}catch(e){}
       location.reload();
