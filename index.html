@@ -828,7 +828,7 @@ function sProfile(u){
   <div class="card"><p class="hint" style="margin-top:0">Your mentor reads this before advising you. Be honest, and write "Not yet" if something does not apply.</p>
     ${Q.map(q=>`<label class="fl" for="pq-${q.k}">${esc(q.q)}</label><textarea id="pq-${q.k}" class="in" rows="2" data-draft="pq:${q.k}">${esc(V.draft['pq:'+q.k]??P[q.k]??'')}</textarea>`).join('')}
     <div class="row-btns"><button class="btn" data-a="saveProfile">Save profile</button></div></div>
-  <div class="row-btns"><button class="btn ghost" data-a="signout">${icon('logout','sm')} Sign out</button></div>`;
+  <div class="stack">${stus.length?stus.map(stuCard).join(''):'<div class="empty">No active students yet.</div>'}</div>`;
 }
 
 // ── MENTOR SCREENS ─────────────────────────────────────────────────────
@@ -948,6 +948,7 @@ function sheetHtml(){
 // ── AUTH SCREENS ───────────────────────────────────────────────────────
 function authScreen(){
   const box=inner=>`<div class="auth"><div class="abox">${inner}</div></div>`;
+  if(V.locked&&V.screen==='app')return box(`<div class="center"><img class="logo-img" src="/icon-512.png" alt=""><h2>Locked</h2><p class="hint">Use your fingerprint or face to open Path Abroad.</p><div class="row-btns c"><button class="btn gold" data-a="unlock">Unlock</button></div><button class="link" data-a="bioPassword">Use password instead</button></div>`);
   if(V.screen==='loading'||V.screen==='app')return box(`<div class="center"><img class="logo-img" src="/icon-512.png" alt=""><p class="hint">Loading…</p></div>`);
   if(V.screen==='config')return box(`<div class="center"><div class="logo-i">${icon('alert','lg')}</div><h2>Firebase not configured</h2><p class="hint">Paste your Firebase config into FIREBASE_CONFIG at the top of the script, or open this page with ?demo to use sample data.</p></div>`);
   if(V.screen==='pending'){const u=C.users[V.uid];return box(`<div class="center"><div class="logo-i">${icon('clock','lg')}</div><h2>Waiting for approval</h2><p class="hint">${u?`Hi ${esc(first(u.name))}, your`:'Your'} account is created. Your mentor will review it and you will get an email once you are approved. This page updates by itself.</p><div class="row-btns c"><button class="btn ghost" data-a="signout">Sign out</button></div></div>`);}
@@ -971,7 +972,8 @@ function body(){
 }
 function render(){
   const app=$('#app');
-  if(V.screen!=='app'||(V.role==='student'&&!Store.user(V.uid))){app.innerHTML=authScreen();document.body.classList.remove('noscroll');syncDemo();return;}
+  if(V.screen==='app'&&V.locked&&!V.bioAsked){V.bioAsked=true;setTimeout(bioUnlock,300);}
+  if(V.screen!=='app'||V.locked||(V.role==='student'&&!Store.user(V.uid))){app.innerHTML=authScreen();document.body.classList.remove('noscroll');syncDemo();return;}
   const b=body(); // runs first so read receipts are applied before badges are counted
   app.innerHTML=topBar()+navBar()+`<div class="stage"><main class="${V.role==='mentor'?'wide':''}">${b}</main></div>`+(V.sheet?sheetHtml():'');
   document.body.classList.toggle('noscroll',!!V.sheet);
@@ -1033,7 +1035,18 @@ const ACT={
   doSignup(){if(DEMO){V.screen='pending';return;}return liveSignup();},
   reset(){if(DEMO){toast('Reset email sent');return 'skip';}return liveReset();},
   signout(){if(DEMO){V.screen='login';V.sheet=null;V.draft={};return;}fb.signOut(auth);return 'skip';},
-  migrate(){migrate();return 'skip';}
+  migrate(){migrate();return 'skip';},
+  unlock(){bioUnlock();return 'skip';},
+  bioPassword(){V.locked=false;if(!DEMO)fb.signOut(auth);return 'skip';},
+  bioToggle(){
+    (async()=>{
+      if(bioOn()){bioSet(false);toast('Fingerprint lock off');}
+      else if(!(await bioAvailable()))toast('Set up fingerprint or face unlock in your phone settings first');
+      else if(await bioVerify('Confirm to turn on the lock')){bioSet(true);toast('Fingerprint lock on');}
+      render();
+    })();
+    return 'skip';
+  }
 };
 
 document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;const f=ACT[el.dataset.a];if(!f)return;if(f(el.dataset,el,e)!=='skip')render();});
@@ -1129,7 +1142,7 @@ function aerr(c){
 async function liveLogin(){
   const em=(V.draft.aEmail||'').trim(),pw=V.draft.aPw||'';
   if(!em||!pw){V.authErr='Enter your email and password.';return;}
-  V.busy=true;V.authErr='';render();
+  V.busy=true;V.authErr='';V.locked=false;render();
   try{await fb.signInWithEmailAndPassword(auth,em,pw);V.draft={};}
   catch(e){V.authErr=aerr(e.code);}
   finally{V.busy=false;render();}
@@ -1140,7 +1153,7 @@ async function liveSignup(){
   if(!nm){V.authErr='Please enter your full name.';return;}
   if(!em){V.authErr='Please enter your email address.';return;}
   if(pw.length<6){V.authErr='Password must be at least 6 characters.';return;}
-  V.busy=true;V.authErr='';V.signingUp=true;render();
+  V.busy=true;V.authErr='';V.signingUp=true;V.locked=false;render();
   const shape=()=>({email:em,name:nm,field:fd,role:'student',status:'pending',createdAt:fb.serverTimestamp()});
   let user=null;
   try{
@@ -1216,6 +1229,7 @@ const SHOW_APK=!window.Capacitor&&/android/i.test(navigator.userAgent);
 const CapApp=window.Capacitor?.Plugins?.App;
 if(CapApp){
   CapApp.addListener('backButton',()=>{
+    if(V.locked&&V.screen==='app'){(CapApp.minimizeApp||CapApp.exitApp).call(CapApp);return;}
     if(V.sheet){V.sheet=null;V.draft={};}
     else if(V.screen==='signup'){V.screen='login';}
     else if(V.role==='mentor'&&V.stu){V.stu=null;}
@@ -1224,6 +1238,35 @@ if(CapApp){
     else{(CapApp.minimizeApp||CapApp.exitApp).call(CapApp);return;}
     render();top0();
   });
+}
+
+// ── FINGERPRINT / FACE LOCK (Android app only) ─────────────────────────
+// Firebase keeps the user signed in; this lock asks for biometrics when the
+// app opens or returns after a minute away. Opt-in per phone.
+const Bio=window.Capacitor?.Plugins?.NativeBiometric;
+const BIO_KEY='pa_bio_lock';
+function bioOn(){try{return localStorage.getItem(BIO_KEY)==='1';}catch(e){return false;}}
+function bioSet(v){try{v?localStorage.setItem(BIO_KEY,'1'):localStorage.removeItem(BIO_KEY);}catch(e){}}
+let bioBusy=false,hiddenAt=0;
+async function bioAvailable(){if(!Bio)return false;try{const r=await Bio.isAvailable();return !!(r&&r.isAvailable);}catch(e){return false;}}
+async function bioVerify(reason){
+  if(!Bio||bioBusy)return false;bioBusy=true;
+  try{await Bio.verifyIdentity({reason,title:'Path Abroad',subtitle:reason});return true;}
+  catch(e){return false;}
+  finally{bioBusy=false;}
+}
+async function bioUnlock(){if(await bioVerify('Unlock Path Abroad')){V.locked=false;render();}}
+V.locked=!!Bio&&bioOn();V.bioAsked=false;
+if(Bio&&CapApp){
+  CapApp.addListener('appStateChange',({isActive})=>{
+    if(!isActive){hiddenAt=Date.now();return;}
+    if(bioOn()&&V.screen==='app'&&!V.locked&&hiddenAt&&Date.now()-hiddenAt>60000){V.locked=true;V.bioAsked=false;V.sheet=null;render();}
+  });
+}
+function bioCard(){
+  if(!Bio)return '';
+  const on=bioOn();
+  return `<div class="card mt"><b>Fingerprint lock</b><p class="hint">${on?'On. The app asks for your fingerprint or face when it opens.':'Ask for your fingerprint or face each time the app opens.'}</p><div class="row-btns" style="margin-top:8px"><button class="btn ${on?'ghost':''}" data-a="bioToggle">${on?'Turn off':'Turn on'}</button></div></div>`;
 }
 
 // ── START ──────────────────────────────────────────────────────────────
