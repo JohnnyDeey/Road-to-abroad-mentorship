@@ -1011,7 +1011,7 @@ function render(){
   if(V.screen==='app'&&V.locked&&!V.bioAsked){V.bioAsked=true;setTimeout(bioUnlock,300);}
   if(V.screen!=='app'||V.locked||(V.role==='student'&&!Store.user(V.uid))){app.innerHTML=authScreen();document.body.classList.remove('noscroll');syncDemo();return;}
   const b=body(); // runs first so read receipts are applied before badges are counted
-  app.innerHTML=topBar()+navBar()+`<div class="stage"><main class="${V.role==='mentor'?'wide':''}">${b}</main></div>`+(V.sheet?sheetHtml():'');
+  app.innerHTML=topBar()+navBar()+`<div class="stage"><main class="${V.role==='mentor'?'wide':''}">${updateBanner()}${b}</main></div>`+(V.sheet?sheetHtml():'');
   document.body.classList.toggle('noscroll',!!V.sheet);
   if(V.scrollBottom){V.scrollBottom=false;window.scrollTo(0,document.body.scrollHeight);}
   syncDemo();
@@ -1296,7 +1296,7 @@ if(CapApp){
 
 // ── FINGERPRINT / FACE LOCK (Android app only) ─────────────────────────
 // Firebase keeps the user signed in; this lock asks for biometrics when the
-// app opens or returns after a minute away. Opt-in per phone.
+// app opens or returns after 15 minutes away. Opt-in per phone.
 const Bio=window.Capacitor?.Plugins?.NativeBiometric;
 const BIO_KEY='pa_bio_lock';
 function bioOn(){try{return localStorage.getItem(BIO_KEY)==='1';}catch(e){return false;}}
@@ -1317,7 +1317,7 @@ if(Bio&&CapApp){
     if(bioBusy||Date.now()-bioEndedAt<3000){hiddenAt=0;return;}
     if(!isActive){hiddenAt=Date.now();return;}
     const away=hiddenAt?Date.now()-hiddenAt:0;hiddenAt=0;
-    if(bioOn()&&V.screen==='app'&&!V.locked&&away>60000){V.locked=true;V.bioAsked=false;V.sheet=null;render();}
+    if(bioOn()&&V.screen==='app'&&!V.locked&&away>15*60*1000){V.locked=true;V.bioAsked=false;V.sheet=null;render();}
   });
 }
 function bioCard(){
@@ -1361,13 +1361,30 @@ function openFromPush(d){
   render();
 }
 
+// ── APP UPDATE BANNER (Android app only) ───────────────────────────────
+// Compares the installed app version with /version.json (written by deploy.bat).
+const APK_URL='https://github.com/JohnnyDeey/Road-to-abroad-mentorship/raw/main/PathAbroad.apk';
+function newer(a,b){const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);for(let i=0;i<3;i++){if((x[i]||0)!==(y[i]||0))return (x[i]||0)>(y[i]||0);}return false;}
+async function checkAppUpdate(){
+  if(!CapApp||!CapApp.getInfo)return;
+  try{
+    const info=await CapApp.getInfo();
+    const latest=(await (await fetch('/version.json',{cache:'no-store'})).json()).android;
+    if(latest&&newer(latest,info.version)){V.update={from:info.version,to:latest};render();}
+  }catch(e){console.warn('update check',e);}
+}
+function updateBanner(){
+  if(!V.update)return '';
+  return `<div class="card nudge" style="margin-bottom:12px">${icon('bell','lg')}<div class="grow"><b>New version ${esc(V.update.to)} available</b><div class="sub">You have ${esc(V.update.from)}. Download and install it to get the latest features.</div></div><a class="btn sm" href="${APK_URL}">Update</a></div>`;
+}
+
 // ── START ──────────────────────────────────────────────────────────────
 if(DEMO){
   loadSample();mountDemo();render();
 }else if(!FIREBASE_CONFIG.apiKey){
   V.screen='config';render();
 }else{
-  render();registerSW();
+  render();registerSW();checkAppUpdate();
   const V10='https://www.gstatic.com/firebasejs/10.12.0/';
   const [appM,authM,fsM]=await Promise.all([import(V10+'firebase-app.js'),import(V10+'firebase-auth.js'),import(V10+'firebase-firestore.js')]);
   fb={...appM,...authM,...fsM};
