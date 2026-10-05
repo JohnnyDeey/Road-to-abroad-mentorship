@@ -1325,6 +1325,42 @@ function bioCard(){
   const on=bioOn();
   return `<div class="card mt"><b>Fingerprint lock</b><p class="hint">${on?'On. The app asks for your fingerprint or face when it opens.':'Ask for your fingerprint or face each time the app opens.'}</p><div class="row-btns" style="margin-top:8px"><button class="btn ${on?'ghost':''}" data-a="bioToggle">${on?'Turn off':'Turn on'}</button></div></div>`;
 }
+// ── PUSH NOTIFICATIONS (Android app only) ──────────────────────────────
+// After sign-in: ask permission, register with FCM, save the token on the
+// user's doc (fcmTokens.android). The Cloud Functions send to that token.
+const Push=window.Capacitor?.Plugins?.PushNotifications;
+let pushReady=false;
+async function setupPush(uid){
+  if(!Push||!uid)return;
+  try{
+    if(!pushReady){
+      pushReady=true;
+      Push.addListener('registration',t=>{const u=auth?.currentUser;if(u&&t.value)fb.setDoc(fb.doc(db,'users',u.uid),{fcmTokens:{android:t.value}},{merge:true}).catch(e=>console.warn('push token',e));});
+      Push.addListener('registrationError',e=>console.warn('push register',e));
+      Push.addListener('pushNotificationReceived',n=>toast(n.title||'New notification'));
+      Push.addListener('pushNotificationActionPerformed',a=>openFromPush((a.notification&&a.notification.data)||{}));
+    }
+    let p=await Push.checkPermissions();
+    if(p.receive==='prompt'||p.receive==='prompt-with-rationale')p=await Push.requestPermissions();
+    if(p.receive==='granted')await Push.register();
+  }catch(e){console.warn('push',e);}
+}
+// Tapping a notification opens the matching screen.
+function openFromPush(d){
+  V.sheet=null;V.draft={};
+  const m=/^m(\d+)t(\d+)$/.exec(d.task||'');
+  if(V.role==='mentor'){
+    if(d.uid&&Store.user(d.uid)){V.stu=d.uid;V.stuTab=d.type==='message'?'messages':'progress';if(m&&d.type!=='message')V.sheet={type:'task',uid:d.uid,m:+m[1],k:+m[2]};}
+    else V.tab=d.type==='submitted'?'review':'home';
+  }else{
+    V.stu=null;
+    if(d.type==='message'){V.tab='messages';V.scrollBottom=true;}
+    else if(m){V.tab='modules';V.mod=+m[1];V.sheet={type:'task',uid:V.uid,m:+m[1],k:+m[2]};}
+    else V.tab='home';
+  }
+  render();
+}
+
 // ── START ──────────────────────────────────────────────────────────────
 if(DEMO){
   loadSample();mountDemo();render();
@@ -1342,10 +1378,10 @@ if(DEMO){
     stopAll();
     if(!user){V.role='student';V.uid=null;if(V.screen!=='signup')V.screen='login';V.sheet=null;render();return;}
     V.authErr='';
-    if(user.uid===MENTOR_UID){setRole('mentor');startMentor();render();return;}
+    if(user.uid===MENTOR_UID){setRole('mentor');startMentor();render();setupPush(user.uid);return;}
     V.role='student';V.uid=user.uid;V.tab='home';V.mod=null;V.sheet=null;
     if(!V.signingUp)V.screen='loading';
-    render();startStudent(user);
+    render();startStudent(user);setupPush(user.uid);
   });
 }
 </script>
