@@ -284,6 +284,7 @@ body.noscroll .demo{display:none}
 .boot i{width:26px;height:26px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--gold);opacity:0;animation:bootspin .8s linear infinite,bootin .2s .4s forwards}
 @keyframes bootspin{to{transform:rotate(360deg)}}
 @keyframes bootin{to{opacity:1}}
+.snap{pointer-events:none}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
@@ -1001,10 +1002,15 @@ function sheetHtml(){
 }
 
 // ── AUTH SCREENS ───────────────────────────────────────────────────────
+// Last home screen, saved so a restart can show it instantly while data loads.
+let snapTimer=null;
+function saveSnap(html){clearTimeout(snapTimer);snapTimer=setTimeout(()=>{try{localStorage.setItem('pa_snap',JSON.stringify({uid:V.uid,html}));}catch(e){}},400);}
+function loadSnap(){try{const s=JSON.parse(localStorage.getItem('pa_snap')||'null');return s&&s.html?s.html:'';}catch(e){return '';}}
 function authScreen(){
   const box=inner=>`<div class="auth"><div class="abox">${inner}</div></div>`;
   if(V.locked&&V.screen==='app')return box(`<div class="center"><img class="logo-img" src="/icon-512.png" alt=""><h2>Locked</h2><p class="hint">Use your fingerprint or face to open Path Abroad.</p><div class="row-btns c"><button class="btn gold" data-a="unlock">Unlock</button></div><button class="link" data-a="bioPassword">Use password instead</button></div>`);
-    if(V.screen==='loading'||V.screen==='app')return `<header class="top"><img class="brand-i" src="/icon-192.png" alt=""><div class="brand">Path <b>Abroad</b></div></header><div class="boot"><i></i></div>`;
+    if(V.screen==='loading'||V.screen==='app'){const sn=V.locked?'':loadSnap();if(sn)return '<div class="snap">'+sn+'</div>';}
+  if(V.screen==='loading'||V.screen==='app')return `<header class="top"><img class="brand-i" src="/icon-192.png" alt=""><div class="brand">Path <b>Abroad</b></div></header><div class="boot"></div>`;
   if(V.screen==='config')return box(`<div class="center"><div class="logo-i">${icon('alert','lg')}</div><h2>Firebase not configured</h2><p class="hint">Paste your Firebase config into FIREBASE_CONFIG at the top of the script, or open this page with ?demo to use sample data.</p></div>`);
   if(V.screen==='pending'){const u=C.users[V.uid];return box(`<div class="center"><div class="logo-i">${icon('clock','lg')}</div><h2>Waiting for approval</h2><p class="hint">${u?`Hi ${esc(first(u.name))}, your`:'Your'} account is created. Your mentor will review it and you will get an email once you are approved. This page updates by itself.</p><div class="row-btns c"><button class="btn ghost" data-a="signout">Sign out</button></div></div>`);}
   const su=V.screen==='signup',D=V.draft;
@@ -1032,6 +1038,7 @@ function render(){
   const b=body(); // runs first so read receipts are applied before badges are counted
   app.innerHTML=topBar()+navBar()+`<div class="stage"><main class="${V.role==='mentor'?'wide':''}">${updateBanner()}${b}</main></div>`+(V.sheet?sheetHtml():'');
   document.body.classList.toggle('noscroll',!!V.sheet);
+  if(!DEMO&&!V.sheet&&V.tab==='home'&&!V.stu&&!V.mod)saveSnap(app.innerHTML);
   if(V.scrollBottom){V.scrollBottom=false;window.scrollTo(0,document.body.scrollHeight);}
   syncDemo();
 }
@@ -1427,7 +1434,7 @@ if(DEMO){
   fb.onAuthStateChanged(auth,user=>{
     if(window.paTrace)window.paTrace('auth state', user?('signed in: '+user.email):'NO USER');
     stopAll();
-    if(!user){V.role='student';V.uid=null;if(V.screen!=='signup')V.screen='login';V.sheet=null;render();return;}
+    if(!user){try{localStorage.removeItem('pa_snap');}catch(e){}V.role='student';V.uid=null;if(V.screen!=='signup')V.screen='login';V.sheet=null;render();return;}
     V.authErr='';
     if(user.uid===MENTOR_UID){setRole('mentor');startMentor();render();setupPush(user.uid);return;}
     V.role='student';V.uid=user.uid;V.tab='home';V.mod=null;V.sheet=null;
