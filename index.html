@@ -936,7 +936,7 @@ function taskSheet(){
   if(mentor){
     h+=`<label class="fl">${esc(first(u.name))}'s answer</label><div class="answer">${e.answer?linkify(e.answer):'<span class="muted">No answer yet</span>'}</div>${e.submittedAt?`<div class="meta">Submitted ${fmt(new Date(e.submittedAt),true)}</div>`:''}
     <label class="fl" for="fb">Your feedback</label><textarea id="fb" class="in" rows="3" data-draft="comment" placeholder="What should they fix, or what did they do well?">${esc(V.draft.comment??e.mentorComment??'')}</textarea>
-    <div class="row-btns"><button class="btn green" data-a="review" data-s="approved">${icon('check','sm')} Approve</button><button class="btn red" data-a="review" data-s="revision">${icon('undo','sm')} Needs revision</button><button class="btn ghost" data-a="review" data-s="comment">Save comment</button></div>`;
+    <div class="row-btns"><button class="btn green" data-a="review" data-s="approved">${icon('check','sm')} Approve</button><button class="btn red" data-a="review" data-s="revision">${icon('undo','sm')} Needs revision</button><button class="btn ghost" data-a="review" data-s="comment">${icon('send','sm')} Send comment</button></div>`;
     return h;
   }
   if(e.mentorComment)h+=`<div class="fb"><div class="fb-h">${icon('chat','sm')} Mentor feedback</div>${linkify(e.mentorComment)}</div>`;
@@ -1031,7 +1031,9 @@ const ACT={
   review(d){
     const {uid,m,k}=V.sheet,id=tid(m,k),comment=(V.draft.comment??(Store.tasks(uid)[id]||{}).mentorComment??'').trim();
     if(d.s==='revision'&&!comment){toast('Add feedback first');$('#fb')?.focus();return 'skip';}
-    const opened=Store.review(uid,id,d.s,comment),u=Store.user(uid);V.sheet=null;V.draft={};
+    const prev=(Store.tasks(uid)[id]||{}).mentorComment||'',u=Store.user(uid),t=cur(u).modules[m-1].tasks[k-1];
+    const opened=Store.review(uid,id,d.s,comment);V.sheet=null;V.draft={};
+    if(comment&&comment!==prev)Store.send(uid,'MENTOR',`Feedback on Module ${m}, task ${k}: ${t.t}\n\n${comment}`);
     toast(opened?`Module ${opened} is now open for ${first(u.name)}`:d.s==='approved'?'Approved':d.s==='revision'?'Sent back for revision':'Comment saved');
   },
   quickApprove(d){const id=tid(+d.m,+d.k),opened=Store.review(d.uid,id,'approved',(Store.tasks(d.uid)[id]||{}).mentorComment||'');toast(opened?`Module ${opened} is now open for ${first(Store.user(d.uid).name)}`:'Approved');},
@@ -1279,20 +1281,23 @@ const Bio=window.Capacitor?.Plugins?.NativeBiometric;
 const BIO_KEY='pa_bio_lock';
 function bioOn(){try{return localStorage.getItem(BIO_KEY)==='1';}catch(e){return false;}}
 function bioSet(v){try{v?localStorage.setItem(BIO_KEY,'1'):localStorage.removeItem(BIO_KEY);}catch(e){}}
-let bioBusy=false,hiddenAt=0;
+let bioBusy=false,hiddenAt=0,bioEndedAt=0;
 async function bioAvailable(){if(!Bio)return false;try{const r=await Bio.isAvailable();return !!(r&&r.isAvailable);}catch(e){return false;}}
 async function bioVerify(reason){
   if(!Bio||bioBusy)return false;bioBusy=true;
   try{await Bio.verifyIdentity({reason,title:'Path Abroad',subtitle:reason});return true;}
   catch(e){return false;}
-  finally{bioBusy=false;}
+  finally{bioBusy=false;bioEndedAt=Date.now();}
 }
 async function bioUnlock(){if(await bioVerify('Unlock Path Abroad')){V.locked=false;render();}}
 V.locked=!!Bio&&bioOn();V.bioAsked=false;
 if(Bio&&CapApp){
   CapApp.addListener('appStateChange',({isActive})=>{
+    // The fingerprint dialog itself pauses and resumes the app, so ignore those.
+    if(bioBusy||Date.now()-bioEndedAt<3000){hiddenAt=0;return;}
     if(!isActive){hiddenAt=Date.now();return;}
-    if(bioOn()&&V.screen==='app'&&!V.locked&&hiddenAt&&Date.now()-hiddenAt>60000){V.locked=true;V.bioAsked=false;V.sheet=null;render();}
+    const away=hiddenAt?Date.now()-hiddenAt:0;hiddenAt=0;
+    if(bioOn()&&V.screen==='app'&&!V.locked&&away>60000){V.locked=true;V.bioAsked=false;V.sheet=null;render();}
   });
 }
 function bioCard(){
@@ -1300,7 +1305,6 @@ function bioCard(){
   const on=bioOn();
   return `<div class="card mt"><b>Fingerprint lock</b><p class="hint">${on?'On. The app asks for your fingerprint or face when it opens.':'Ask for your fingerprint or face each time the app opens.'}</p><div class="row-btns" style="margin-top:8px"><button class="btn ${on?'ghost':''}" data-a="bioToggle">${on?'Turn off':'Turn on'}</button></div></div>`;
 }
-
 // ── START ──────────────────────────────────────────────────────────────
 if(DEMO){
   loadSample();mountDemo();render();
