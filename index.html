@@ -280,6 +280,10 @@ body.noscroll .demo{display:none}
 .center{text-align:center}
 .err{color:var(--red);font-size:.82rem;margin-top:12px;line-height:1.4}
 .apk{display:block;text-align:center;margin-top:18px;padding-top:14px;border-top:1px dashed var(--line);font-size:.86rem;font-weight:700;color:var(--navy);text-decoration:none}
+.boot{min-height:60vh;display:grid;place-items:center}
+.boot i{width:26px;height:26px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--gold);opacity:0;animation:bootspin .8s linear infinite,bootin .2s .4s forwards}
+@keyframes bootspin{to{transform:rotate(360deg)}}
+@keyframes bootin{to{opacity:1}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
@@ -1000,7 +1004,7 @@ function sheetHtml(){
 function authScreen(){
   const box=inner=>`<div class="auth"><div class="abox">${inner}</div></div>`;
   if(V.locked&&V.screen==='app')return box(`<div class="center"><img class="logo-img" src="/icon-512.png" alt=""><h2>Locked</h2><p class="hint">Use your fingerprint or face to open Path Abroad.</p><div class="row-btns c"><button class="btn gold" data-a="unlock">Unlock</button></div><button class="link" data-a="bioPassword">Use password instead</button></div>`);
-  if(V.screen==='loading'||V.screen==='app')return box(`<div class="center"><img class="logo-img" src="/icon-512.png" alt=""><p class="hint">Loading…</p></div>`);
+    if(V.screen==='loading'||V.screen==='app')return `<header class="top"><img class="brand-i" src="/icon-192.png" alt=""><div class="brand">Path <b>Abroad</b></div></header><div class="boot"><i></i></div>`;
   if(V.screen==='config')return box(`<div class="center"><div class="logo-i">${icon('alert','lg')}</div><h2>Firebase not configured</h2><p class="hint">Paste your Firebase config into FIREBASE_CONFIG at the top of the script, or open this page with ?demo to use sample data.</p></div>`);
   if(V.screen==='pending'){const u=C.users[V.uid];return box(`<div class="center"><div class="logo-i">${icon('clock','lg')}</div><h2>Waiting for approval</h2><p class="hint">${u?`Hi ${esc(first(u.name))}, your`:'Your'} account is created. Your mentor will review it and you will get an email once you are approved. This page updates by itself.</p><div class="row-btns c"><button class="btn ghost" data-a="signout">Sign out</button></div></div>`);}
   const su=V.screen==='signup',D=V.draft;
