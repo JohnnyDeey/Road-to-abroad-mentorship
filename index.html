@@ -635,8 +635,8 @@ function modState(u,m){if(m>(u.unlockedModule||1))return'locked';if(modStats(u,m
 function overall(u){let t=0,a=0;cur(u).modules.forEach((_,i)=>{const s=modStats(u,i+1);t+=s.total;a+=s.approved;});return{t,a,pct:pct(a,t)};}
 function countStatus(u,st){const p=Store.tasks(u.uid);return Object.values(p).filter(e=>e.status===st).length;}
 function reviewQueue(){const q=[];Store.students().forEach(u=>{const p=Store.tasks(u.uid);cur(u).modules.forEach((mod,i)=>mod.tasks.forEach((t,k)=>{const e=p[tid(i+1,k+1)];if(e&&e.status==='submitted')q.push({u,m:i+1,k:k+1,t,e});}));});return q.sort((a,b)=>(a.e.submittedAt||0)-(b.e.submittedAt||0));}
-const unreadFor=uid=>Store.thread(uid).filter(m=>m.from==='MENTOR'&&!m.read).length;
-const unreadFrom=uid=>Store.thread(uid).filter(m=>m.from===uid&&!m.read).length;
+const unreadFor=uid=>Store.thread(uid).filter(m=>!m.task&&m.from==='MENTOR'&&!m.read).length;
+const unreadFrom=uid=>Store.thread(uid).filter(m=>!m.task&&m.from===uid&&!m.read).length;
 const unreadMentor=()=>Store.students().reduce((a,u)=>a+unreadFrom(u.uid),0);
 const guessTrack=u=>/nurs/i.test(u.field||'')?'nursing':'general';
 const chip=s=>`<span class="chip st-${s}">${ST[s]}</span>`;
@@ -718,7 +718,7 @@ const MockWrites={
   updateStudent(uid,patch){Object.assign(C.users[uid],patch);emit();},
   saveProfile(uid,p){const u=C.users[uid];u.profile={...(u.profile||{}),...p};emit();},
   send(uid,from,body,task){const x={id:'m'+Math.random().toString(36).slice(2),uid,from,body,at:Date.now(),read:false};if(task)x.task=task;C.messages.push(x);emit();},
-  markRead(uid,me,task){C.messages.forEach(m=>{if(m.uid===uid&&m.from!==me&&(!task||m.task===task))m.read=true;});},
+  markRead(uid,me,task){C.messages.forEach(m=>{if(m.uid===uid&&m.from!==me&&(task?m.task===task:!m.task))m.read=true;});},
   addLog(uid,x){Store.log(uid).push({id:'l'+Date.now(),...x});emit();},
   delLog(uid,id){C.log[uid]=Store.log(uid).filter(x=>x.id!==id);emit();}
 };
@@ -748,7 +748,7 @@ const FireWrites={
   updateStudent(uid,patch){fb.updateDoc(fb.doc(db,'users',uid),patch).catch(fail);},
   saveProfile(uid,p){const u=C.users[uid];u.profile={...(u.profile||{}),...p};emit();fb.setDoc(fb.doc(db,'users',uid),{profile:u.profile},{merge:true}).catch(fail);},
   send(uid,from,body,task){const v={uid,from,body,at:fb.serverTimestamp(),read:false};if(task)v.task=task;fb.addDoc(fb.collection(db,'messages'),v).catch(fail);},
-  markRead(uid,me,task){C.messages.forEach(m=>{if(m.uid===uid&&m.from!==me&&(!task||m.task===task)&&!m.read&&!marking.has(m.id)){marking.add(m.id);m.read=true;fb.updateDoc(fb.doc(db,'messages',m.id),{read:true}).catch(()=>marking.delete(m.id));}});},
+  markRead(uid,me,task){C.messages.forEach(m=>{if(m.uid===uid&&m.from!==me&&(task?m.task===task:!m.task)&&!m.read&&!marking.has(m.id)){marking.add(m.id);m.read=true;fb.updateDoc(fb.doc(db,'messages',m.id),{read:true}).catch(()=>marking.delete(m.id));}});},
   addLog(uid,x){fb.addDoc(fb.collection(db,'meetings',uid,'log'),x).catch(fail);},
   delLog(uid,id){fb.deleteDoc(fb.doc(db,'meetings',uid,'log',id)).catch(fail);}
 };
@@ -784,7 +784,7 @@ function guideBlock(u,n){
   </details>`;
 }
 function threadView(uid,me){
-  const th=Store.thread(uid);Store.markRead(uid,me);
+  const th=Store.thread(uid).filter(m=>!m.task);Store.markRead(uid,me);
   return `<div class="thread">${th.length?th.map(m=>`<div class="bub ${m.from===me?'me':'them'}">${m.task?`<span class="tl">${m.task.replace(/^m(\d+)t(\d+)$/,'Module $1 · Task $2')}</span>`:''}${linkify(m.body)}<time>${ago(m.at)}</time></div>`).join(''):'<div class="empty">No messages yet. Say hello.</div>'}</div>
   <div class="composer"><textarea class="in" rows="1" data-draft="msg" placeholder="Write a message" aria-label="Message">${esc(V.draft.msg||'')}</textarea><button class="send" data-a="send" data-uid="${uid}" aria-label="Send">${icon('send')}</button></div>`;
 }
@@ -867,7 +867,7 @@ function mReview(){
     <div class="row-btns"><button class="btn sm green" data-a="quickApprove" data-uid="${r.u.uid}" data-m="${r.m}" data-k="${r.k}">${icon('check','sm')} Approve</button><button class="btn sm ghost" data-a="openTask" data-uid="${r.u.uid}" data-m="${r.m}" data-k="${r.k}">${icon('pen','sm')} Open & comment</button></div></div>`).join('')}</div>`;
 }
 function mMessages(){
-  const rows=Store.students().map(u=>{const th=Store.thread(u.uid);return{u,last:th[th.length-1],un:unreadFrom(u.uid)};}).sort((a,b)=>(b.last?.at||0)-(a.last?.at||0));
+  const rows=Store.students().map(u=>{const th=Store.thread(u.uid).filter(m=>!m.task);return{u,last:th[th.length-1],un:unreadFrom(u.uid)};}).sort((a,b)=>(b.last?.at||0)-(a.last?.at||0));
   return `<h2 class="pg-t">Messages</h2>
   <div class="stack mt">${rows.length?rows.map(r=>`<button class="card thr" data-a="openStu" data-uid="${r.u.uid}" data-tab2="messages"><div class="av">${esc(initial(r.u.name))}</div><div class="grow"><div class="nm">${esc(r.u.name)}</div><div class="sub one">${r.last?esc((r.last.from==='MENTOR'?'You: ':'')+r.last.body):'No messages yet'}</div></div><div class="thr-r">${r.last?`<span class="sub">${ago(r.last.at)}</span>`:''}${r.un?`<span class="dot static">${r.un}</span>`:''}</div></button>`).join(''):'<div class="empty">No active students yet.</div>'}</div>
   <div class="sec-t">Broadcast</div>
@@ -1046,13 +1046,15 @@ const ACT={
   saveTask(){return studentSave(false);},
   submitTask(){return studentSave(true);},
   withdraw(){const {uid,m,k}=V.sheet,e=Store.tasks(uid)[tid(m,k)]||{};Store.saveAnswer(uid,tid(m,k),e.answer||'','in_progress');toast('Edit, then submit again');},
+    tSend(){const {uid,m,k}=V.sheet,b=(V.draft.tcomment||'').trim();if(!b){toast('Write a comment first');return 'skip';}Store.send(uid,uid,b,tid(m,k));V.draft.tcomment='';toast('Sent');},
   review(d){
-    const {uid,m,k}=V.sheet,id=tid(m,k),comment=(V.draft.comment??(Store.tasks(uid)[id]||{}).mentorComment??'').trim();
-    if(d.s==='revision'&&!comment){toast('Add feedback first');$('#fb')?.focus();return 'skip';}
-    const prev=(Store.tasks(uid)[id]||{}).mentorComment||'',u=Store.user(uid),t=cur(u).modules[m-1].tasks[k-1];
-    const opened=Store.review(uid,id,d.s,comment);V.sheet=null;V.draft={};
-    if(comment&&comment!==prev)Store.send(uid,'MENTOR',`Feedback on Module ${m}, task ${k}: ${t.t}\n\n${comment}`);
-    toast(opened?`Module ${opened} is now open for ${first(u.name)}`:d.s==='approved'?'Approved':d.s==='revision'?'Sent back for revision':'Comment saved');
+    const {uid,m,k}=V.sheet,id=tid(m,k),e=Store.tasks(uid)[id]||{},comment=(V.draft.comment||'').trim(),u=Store.user(uid);
+    if(d.s!=='approved'&&!comment){toast(d.s==='revision'?'Add a comment saying what to fix':'Write a comment first');$('#fb')?.focus();return 'skip';}
+    if(comment)Store.send(uid,'MENTOR',comment,id);
+    const opened=Store.review(uid,id,d.s,comment||e.mentorComment||'');
+    if(d.s==='comment'){V.draft.comment='';toast('Comment sent');return;}
+    V.sheet=null;V.draft={};
+    toast(opened?`Module ${opened} is now open for ${first(u.name)}`:d.s==='approved'?'Approved':'Sent back for revision');
   },
   quickApprove(d){const id=tid(+d.m,+d.k),opened=Store.review(d.uid,id,'approved',(Store.tasks(d.uid)[id]||{}).mentorComment||'');toast(opened?`Module ${opened} is now open for ${first(Store.user(d.uid).name)}`:'Approved');},
   copyTpl(d){const t=CURRICULA[d.track].modules[d.m-1].template;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Template copied'),()=>toast('Copy not available here'));return 'skip';},
